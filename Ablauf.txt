@@ -1,0 +1,23 @@
+- [ ] delta OCV zwischen 5 und 45 grad (C/20)
+	- [ ] darstellen (je Zelle)
+	- [ ] wenn das läuft:
+		- [ ] deltaOCV über die iOCV laufen lassen (C/5)
+		- [ ] Vergleich der Ergebnisse (qualitativ) mit C/20 Verlauf
+
+Ziel: 
+2 dicts/dataframes mit:
+- [x] OCV (Mittelwerte und Standardabweichung)
+- [ ] Auswertungen (DVA, ICA, deltaOCV)
+
+## 28.11.24 Update: 17.12.24
+Nächste Punkte:
+- [x] Butler-Volmer Verhalten der Zellen anhand der Messpunkte fitten (Heubner et al.)
+	- [ ] Für das Hysterese Verhalten (über SOC)
+	- [ ] Neue Daten einpflegen (Test kommt)
+- [ ] Vergleich der iOCV C/5 Graphen bei 25°C der drei Zellvarianten
+- [ ] 2 RC Fit auf die iOCV (GITT) 
+	- [ ] Lookup Tabellen für:
+		- [x] R_o 
+		- [x] R_1 und tau_1
+		- [x] R_2 und tau_2
+	- [ ] Darstellen der Parameter über SOC (Ladung/Entladung in einem Plot)
