@@ -102,7 +102,7 @@ def consecutive(data, stepsize=1):
 
 """OCV Daten erstellen"""
 
-path=r"C:\Users\maxim\Nextcloud\Vorlagen\Shared\Austausch_Max\Projekt_Entropie\OCV_Varianten"
+path=r"C:\Users\maxim\Nextcloud\Shared\Austausch_Max\Projekt_Entropie\OCV_Varianten"
 zellnamen=os.listdir(path)
 # zellnamen=["AMNMC067"]
 c_rate=["C/20","C/5","C/2","C/5 iOCV","C/2 iOCV"]
@@ -180,6 +180,7 @@ for z in zellnamen:
             OCV[z]["dis"][t][c_rate[l]]=np.asarray(tempdis,dtype=np.float64)
     
             l+=1
+
 #%%
 """OCV Dict Speichern"""
 # with open('OCV_daten.pkl', 'wb') as file:
@@ -269,9 +270,9 @@ for za in Zellarten.keys():
                 OCV_mean[za][mode][grad][c]=mittelwert(OCV,Zellarten[za],mode,grad,c)
         
 #%%
-"""OCV mean dict speichern"""
-with open('OCV_mean.pkl', 'wb') as file:
-    pickle.dump(OCV_mean, file)
+# """OCV mean dict speichern"""
+# with open('OCV_mean.pkl', 'wb') as file:
+#     pickle.dump(OCV_mean, file)
     
 #%%
 # plt.plot(OCV["AMNMC065"]["ch"]["5°C"]["C/5"][100:500,2],"--")

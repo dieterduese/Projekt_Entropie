@@ -21,4 +21,3 @@ Nächste Punkte:
 		- [x] R_1 und tau_1
 		- [x] R_2 und tau_2
 	- [ ] Darstellen der Parameter über SOC (Ladung/Entladung in einem Plot)
-weg damit

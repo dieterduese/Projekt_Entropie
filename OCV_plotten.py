@@ -360,32 +360,65 @@ for cell, directions in DeltaOCV.items():
     plt.legend()
     plt.grid()
     plt.show()
-    #%%
-    # """Temp vergleich"""
-    # colors=[ '#00a6b3','#cc0000','#22a15c', '#ff8000','#9900cc']
-    # co=0
-    # # fig, axes = plt.subplots(3, 1, figsize=(8, 6))
+  #%%
+"""Delta OCV Variante 2"""
+DeltaOCV_2={}
+for cell, directions in data.items():
+    DeltaOCV_2[cell] = {}
+    
+    for direction, temps in directions.items():
+        capacity1 = directions[direction]["45°C"]['C/20']['mean'][:,4].copy() # Kapazitätswerte von Array 1
+        voltage1 = directions[direction]["45°C"]['C/20']['mean'][:,2].copy()  # Spannungen von Array 1
 
-    # # Plot 1: OCV Daten
+        capacity2 = directions[direction]["5°C"]['C/20']['mean'][:,4].copy() # Kapazitätswerte von Array 2
+        voltage2 = directions[direction]["5°C"]['C/20']['mean'][:,2].copy() # Spannungen von Array 2
+        # if direction=="ch":
+        #     capacity1-=capacity1[0]
+        #     capacity2-=capacity2[0]
+        #     common_capacity = np.linspace(max(min(capacity1), min(capacity2)),
+        #                                     min(max(capacity1), max(capacity2)), 100)
 
-    # savgol={"C/20":101,"C/5":91,"C/2":61}
-    # for z in data.keys():
-    #     co=0
+        # elif direction=="dis":
+        #     capacity1-=capacity1[-1]
+        #     capacity2-=capacity2[-1]
+        #     common_capacity = np.linspace(min(max(capacity1), max(capacity2)),
+        #                                   max(min(capacity1), min(capacity2)), 100)
 
-    #     for t in DeltaOCV[z]["ch"].keys():
-    #         ch = DeltaOCV[z]["ch"][t]
-    #         dis = DeltaOCV[z]["dis"][t]
-            
+        # else:
+        #     print("falsche Ladungsrichtung")
+        capacity1-=capacity1[0]
+        capacity2-=capacity2[0]
+        common_capacity = np.linspace(max(min(capacity1), min(capacity2)),
+                                        min(max(capacity1), max(capacity2)), 100)
+        # # 2. Spannungen auf gemeinsamen Kapazitätsbereich interpolieren
+        # interp_voltage1 = np.interp(common_capacity, capacity1, voltage1)
+        # interp_voltage2 = np.interp(common_capacity, capacity2, voltage2)
+        f1=interp1d(capacity1,voltage1,kind='linear')
+        f2=interp1d(capacity2,voltage2,kind='linear')
+        interp_voltage1=f1(common_capacity)
+        interp_voltage2=f2(common_capacity)
 
-
-
-    #         plt.plot(ch[:,1], ch[:, 0], linestyle='--', color=colors[co])
-    #         plt.plot(dis[:,1], dis[:, ], color=colors[co],label=t+" C/20")
-            
-
-            
-    #         co += 1
-    #     # fig.title(z)
-    #     plt.legend()
-    #     plt.show()
+        # 3. Delta OCV berechnen
+        delta_ocv = interp_voltage1 - interp_voltage2
+        DeltaOCV_2[cell][direction]=np.array([common_capacity,delta_ocv]).T
+#%%
         
+colors = ['#22a15c', '#00a6b3', '#cc0000', '#ff8000', '#808080',"yellow"]
+color_index=0
+for cell, directions in DeltaOCV_2.items():
+    plt.figure(figsize=(10, 6))
+    plt.title(f"{cell}")
+    
+    color_index=0
+    # Schleife über die Lade- und Entladerichtungen (ch und dis)
+    for direction, temps in directions.items():
+            plt.plot(directions[direction][:,0],directions[direction][:,1],label=direction,color=colors[color_index])
+            color_index += 1
+
+    # Plot-Anpassungen und Anzeige
+    plt.xlabel("Q (Ah)")
+    plt.ylabel("ΔOCV (V)")
+    plt.legend()
+    plt.grid()
+    plt.show() 
+#%%
