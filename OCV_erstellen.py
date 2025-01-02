@@ -307,6 +307,11 @@ for za in Zellarten.keys():
     # # Zeige den Plot
     # plt.show()
     # a+=1
+#%%
+l1=17
+l2=17
+test=filtplot(dict_test["HEL23NMC17_OCV_45deg.txt"],l1,l2,plot=1,col=4)
+test2=filtplot(dict_test["HEL23NMC17_OCV_5deg.txt"],l1,l2,plot=1,col=4)
 
 
 
