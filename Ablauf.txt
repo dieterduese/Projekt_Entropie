@@ -1,5 +1,5 @@
-- [ ] delta OCV zwischen 5 und 45 grad (C/20)
-	- [ ] darstellen (je Zelle)
+- [x] delta OCV zwischen 5 und 45 grad (C/20)
+	- [x] darstellen (je Zelle)
 	- [ ] wenn das läuft:
 		- [ ] deltaOCV über die iOCV laufen lassen (C/5)
 		- [ ] Vergleich der Ergebnisse (qualitativ) mit C/20 Verlauf
@@ -7,7 +7,7 @@
 Ziel: 
 2 dicts/dataframes mit:
 - [x] OCV (Mittelwerte und Standardabweichung)
-- [ ] Auswertungen (DVA, ICA, deltaOCV)
+- [x] Auswertungen (DVA, ICA, deltaOCV)
 
 ## 28.11.24 Update: 17.12.24
 Nächste Punkte:

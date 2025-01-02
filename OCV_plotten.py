@@ -443,3 +443,7 @@ for cell in Delta_lade.keys():
     plt.grid()
     plt.show() 
     
+#%%
+Auswertungen={"DVA":DVA,"ICA":ICA,"DeltaOCV":{"T":DeltaOCV_2,"TundLade":Delta_lade}}
+# with open('Auswertungen_array.pkl', 'wb') as file:
+#     pickle.dump(Auswertungen, file)
