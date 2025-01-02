@@ -362,87 +362,93 @@ for z in data.keys():
 #     plt.show()
   #%%
 """Delta OCV Variante 2"""
-DeltaOCV_2={}
-for cell, directions in data.items():
-    DeltaOCV_2[cell] = {}
+DeltaOCV_2={"C/5 iOCV":{},"C/20":{}}
+for c in DeltaOCV_2.keys():
     
-    for direction, temps in directions.items():
-        #cv phasen nach entladung beim charge am anfang abziehen
-        if direction=="ch":
-            temp1=np.where(directions[direction]["45°C"]['C/20']['mean'][:,4]>=data[cell]["dis"]["45°C"]["C/20"]["mean"][-1,4])
-            temp2=np.where(directions[direction]["5°C"]['C/20']['mean'][:,4]>=data[cell]["dis"]["5°C"]["C/20"]["mean"][-1,4])
-            g1=temp1[0][0]
-            g2=temp2[0][0]
-        else:
-            g1=0
-            g2=0
-        capacity1 = directions[direction]["45°C"]['C/20']['mean'][g1:,4].copy() # Kapazitätswerte von Array 1
-        voltage1 = directions[direction]["45°C"]['C/20']['mean'][g1:,2].copy()  # Spannungen von Array 1
-        capacity2 = directions[direction]["5°C"]['C/20']['mean'][g2:,4].copy() # Kapazitätswerte von Array 2
-        voltage2 = directions[direction]["5°C"]['C/20']['mean'][g2:,2].copy() # Spannungen von Array 2
+    for cell, directions in data.items():
+        DeltaOCV_2[c][cell] = {}
         
-        capacity1-=capacity1[0]
-        capacity2-=capacity2[0]
-        common_capacity = np.linspace(max(min(capacity1), min(capacity2)),
-                                        min(max(capacity1), max(capacity2)), 1000)
-
-        f1=interp1d(capacity1,voltage1,kind='linear')
-        f2=interp1d(capacity2,voltage2,kind='linear')
-        interp_voltage1=f1(common_capacity)
-        interp_voltage2=f2(common_capacity)
-
-        # 3. Delta OCV berechnen
-        delta_ocv = interp_voltage1 - interp_voltage2
-        DeltaOCV_2[cell][direction]=np.array([common_capacity-min(common_capacity),delta_ocv]).T
+        for direction, temps in directions.items():
+            #cv phasen nach entladung beim charge am anfang abziehen
+            if direction=="ch":
+                temp1=np.where(directions[direction]["45°C"][c]['mean'][:,4]>=data[cell]["dis"]["45°C"][c]["mean"][-1,4])
+                temp2=np.where(directions[direction]["5°C"][c]['mean'][:,4]>=data[cell]["dis"]["5°C"][c]["mean"][-1,4])
+                g1=temp1[0][0]
+                g2=temp2[0][0]
+            else:
+                g1=0
+                g2=0
+            capacity1 = directions[direction]["45°C"][c]['mean'][g1:,4].copy() # Kapazitätswerte von Array 1
+            voltage1 = directions[direction]["45°C"][c]['mean'][g1:,2].copy()  # Spannungen von Array 1
+            capacity2 = directions[direction]["5°C"][c]['mean'][g2:,4].copy() # Kapazitätswerte von Array 2
+            voltage2 = directions[direction]["5°C"][c]['mean'][g2:,2].copy() # Spannungen von Array 2
+            
+            capacity1-=capacity1[0]
+            capacity2-=capacity2[0]
+            common_capacity = np.linspace(max(min(capacity1), min(capacity2)),
+                                            min(max(capacity1), max(capacity2)), 1000)
+    
+            f1=interp1d(capacity1,voltage1,kind='linear')
+            f2=interp1d(capacity2,voltage2,kind='linear')
+            interp_voltage1=f1(common_capacity)
+            interp_voltage2=f2(common_capacity)
+    
+            # 3. Delta OCV berechnen
+            delta_ocv = interp_voltage1 - interp_voltage2
+            DeltaOCV_2[c][cell][direction]=np.array([common_capacity-min(common_capacity),delta_ocv]).T
 #%%
         
 colors = ['#22a15c', '#00a6b3', '#cc0000', '#ff8000', '#808080',"yellow"]
 color_index=0
-for cell, directions in DeltaOCV_2.items():
-    plt.figure(figsize=(10, 6))
-    plt.title(f"{cell}")
+for c,cells in DeltaOCV_2.items():
+    for cell, directions in cells.items():
+        plt.figure(figsize=(10, 6))
+        plt.title(f"{cell}"+" "+f"{c}")
+        
+        color_index=0
+        # Schleife über die Lade- und Entladerichtungen (ch und dis)
+        for direction, temps in directions.items():
+                plt.plot(directions[direction][:,0],directions[direction][:,1],label=direction,color=colors[color_index])
+                color_index += 1
     
-    color_index=0
-    # Schleife über die Lade- und Entladerichtungen (ch und dis)
-    for direction, temps in directions.items():
-            plt.plot(directions[direction][:,0],directions[direction][:,1],label=direction,color=colors[color_index])
-            color_index += 1
-
-    # Plot-Anpassungen und Anzeige
-    plt.xlabel("Q (Ah)")
-    plt.ylabel("ΔOCV (V)")
-    plt.legend()
-    plt.grid()
+        # Plot-Anpassungen und Anzeige
+        plt.xlabel("Q (Ah)")
+        plt.ylabel("ΔOCV (V)")
+        plt.legend()
+        plt.grid()
     plt.show() 
 #%%
-Delta_lade={}
-for cell, directions in DeltaOCV_2.items():
-    cap1=directions["dis"][:,0]
-    vol1=directions["dis"][:,1]
+Delta_lade={"C/5 iOCV":{},"C/20":{}}
+for c, cells in DeltaOCV_2.items():
     
-    cap2=directions["ch"][:,0]
-    vol2=directions["ch"][:,1]
+    for cell, directions in cells.items():
+        cap1=directions["dis"][:,0]
+        vol1=directions["dis"][:,1]
+        
+        cap2=directions["ch"][:,0]
+        vol2=directions["ch"][:,1]
+        
+        cap_gleich=np.linspace(max(min(cap1),min(cap2)),min(max(cap1),max(cap2)),1000)
+        int1=interp1d(cap1,vol1,kind='linear')
+        int2=interp1d(cap2,vol2,kind='linear')
+        int_vol1=int1(cap_gleich)
+        int_vol2=int2(cap_gleich)
+        
+        delta_vol=int_vol1+int_vol2
+        Delta_lade[c][cell]=np.array([cap_gleich,delta_vol]).T
+for c, cells in Delta_lade.items():
     
-    cap_gleich=np.linspace(max(min(cap1),min(cap2)),min(max(cap1),max(cap2)),1000)
-    int1=interp1d(cap1,vol1,kind='linear')
-    int2=interp1d(cap2,vol2,kind='linear')
-    int_vol1=int1(cap_gleich)
-    int_vol2=int2(cap_gleich)
-    
-    delta_vol=int_vol1+int_vol2
-    Delta_lade[cell]=np.array([cap_gleich,delta_vol]).T
-
-for cell in Delta_lade.keys():
-    plt.figure(figsize=(10, 6))
-    plt.title(f"{cell}")
-    
-    plt.plot(Delta_lade[cell][:,0],Delta_lade[cell][:,1])
-    plt.xlabel("Q (Ah)")
-    plt.ylabel("ΔOCV (V)")
-    plt.legend()
-    plt.grid()
-    plt.show() 
-    
+    for cell in Delta_lade[c].keys():
+        plt.figure(figsize=(10, 6))
+        plt.title(f"{cell}"+" "+f"{c}")
+        
+        plt.plot(Delta_lade[c][cell][:,0],Delta_lade[c][cell][:,1])
+        plt.xlabel("Q (Ah)")
+        plt.ylabel("ΔOCV (V)")
+        # plt.legend()
+        plt.grid()
+        plt.show() 
+        
 #%%
 Auswertungen={"DVA":DVA,"ICA":ICA,"DeltaOCV":{"T":DeltaOCV_2,"TundLade":Delta_lade}}
 # with open('Auswertungen_array.pkl', 'wb') as file:
