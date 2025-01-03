@@ -416,7 +416,7 @@ for c,cells in DeltaOCV_2.items():
         plt.ylabel("ΔOCV (V)")
         plt.legend()
         plt.grid()
-    plt.show() 
+        plt.show() 
 #%%
 Delta_lade={"C/5 iOCV":{},"C/20":{}}
 for c, cells in DeltaOCV_2.items():
