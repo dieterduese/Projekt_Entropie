@@ -323,7 +323,8 @@ data_raw=load(initpath,datei,skip=0,separation=" ")
 data_temp=np.delete(data_raw,[1,2,3,5,10,12,13],1)
 data=data_temp
 #%%
-test=filtplot(data,107,109,plot=1,col=2)
+test=filtplot(data,0,109,plot=1,col=4)
+#%%
 lines_iOCV_dis=[[19,20,21],[35,36,37],[51,52,53],[67,68,69],[83,84,85],[99,100,101]]
 lines_iOCV_ch=[[27,28,29],[43,44,45],[59,60,61],[75,76,77],[91,92,93],[107,108,109]]
 
@@ -406,14 +407,73 @@ for direction in OCV.keys():
         if direction=="ch":
             moddata[f"{c}"+" "+f"{direction}"]["U"]=IR_all[t][1]
         elif direction=="dis":
-            moddata[f"{c}"+" "+f"{direction}"]["U"]=-IR_all[t][0]
+            moddata[f"{c}"+" "+f"{direction}"]["U"]=np.array([IR_all[t][0][0,:],-IR_all[t][0][1,:]])
         else:
             print("falsche Laderichtung")
         moddata[f"{c}"+" "+f"{direction}"]["I"]=OCV[direction][c][5,3]
         # moddata[f"{c}"+" "+f"{direction}"]["I"]=np.mean(OCV[direction][c][1:10,3])
 
         t+=1
+#%%
+import copy
 
+testdict = copy.deepcopy(moddata)
+testdict2=copy.deepcopy(testdict)
+
+minvol=[]
+maxvol=[]    
+for i in testdict.keys():
+    minvol.append(min(testdict[i]["U"][0,:]))
+    maxvol.append(max(testdict[i]["U"][0,:]))
+commonvol=np.linspace(max(minvol),min(maxvol),90)
+for i in testdict.keys():
+    
+    f1=interp1d(testdict[i]["U"][0,:],testdict[i]["U"][1,:],kind='linear')
+    interpU=f1(commonvol)
+    testdict2[i]["U"]=np.array([commonvol,interpU])
+#%%
+
+U_data=np.array([testdict2["5.1A dis"]["U"][1,10],testdict2["1.5C dis"]["U"][1,10],testdict2["1C dis"]["U"][1,10],
+                 testdict2["3C/4 dis"]["U"][1,10],testdict2["C/2 dis"]["U"][1,10],testdict2["C/5 dis"]["U"][1,10],
+                 0,
+                 testdict2["C/5 ch"]["U"][1,10],testdict2["C/2 ch"]["U"][1,10],testdict2["3C/4 ch"]["U"][1,10],
+                 testdict2["1C ch"]["U"][1,10],testdict2["1.5C ch"]["U"][1,10],testdict2["5.1A ch"]["U"][1,10]])
+#U_data=[-0.478901,-0.018507,0,0.0198429,0.048844]
+I_data=np.array([testdict2["5.1A dis"]["I"],testdict2["1.5C dis"]["I"],testdict2["1C dis"]["I"],
+                 testdict2["3C/4 dis"]["I"],testdict2["C/2 dis"]["I"],testdict2["C/5 dis"]["I"],
+                 0,
+                 testdict2["C/5 ch"]["I"],testdict2["C/2 ch"]["I"],testdict2["3C/4 ch"]["I"],
+                testdict2["1C ch"]["I"],testdict2["1.5C ch"]["I"],testdict2["5.1A ch"]["I"]])
+
+
+p0 = [0.4, 0.3, 0.01]  # Startwerte: I0, alpha, IR
+# bounds = (
+#     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
+#     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
+# )
+
+# popt, pcov = curve_fit(
+#     model2, I_data, U_data,
+#     p0=p0, bounds=bounds
+# )
+solution = fmin(cost_func2,p0,args=(U_data,I_data))  
+# Ausgabe der Fit-Ergebnisse
+I0_fit, alpha_fit, R_fit = solution
+print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
+
+# Fit-Kurve berechnen
+U_fit = np.linspace(min(U_data), max(U_data), 100)
+I_fit=np.linspace(min(I_data),max(I_data),100)
+I_fit = model2(U_fit,I_fit, solution)
+
+# Plot der Daten und des Fits
+plt.scatter( U_data,I_data, label="Daten", color="blue")
+plt.plot( U_fit,I_fit ,label="Fit", color="red")
+
+plt.legend()
+plt.grid()
+plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
+plt.show()
 #%%
 U_data=np.array([moddata["5.1A dis"]["U"][1,82],moddata["1.5C dis"]["U"][1,82],moddata["1C dis"]["U"][1,82],
                  moddata["3C/4 dis"]["U"][1,82],moddata["C/2 dis"]["U"][1,82],moddata["C/5 dis"]["U"][1,82],
