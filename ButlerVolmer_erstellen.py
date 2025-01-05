@@ -425,94 +425,158 @@ maxvol=[]
 for i in testdict.keys():
     minvol.append(min(testdict[i]["U"][0,:]))
     maxvol.append(max(testdict[i]["U"][0,:]))
-commonvol=np.linspace(max(minvol),min(maxvol),90)
+commonvol=np.linspace(max(minvol),min(maxvol),100)
 for i in testdict.keys():
     
     f1=interp1d(testdict[i]["U"][0,:],testdict[i]["U"][1,:],kind='linear')
     interpU=f1(commonvol)
     testdict2[i]["U"]=np.array([commonvol,interpU])
 #%%
+# Butler Volmer testen
+# e=10
+# U_data=np.array([testdict2["1C dis"]["U"][1,e],
+#                  testdict2["3C/4 dis"]["U"][1,e],testdict2["C/2 dis"]["U"][1,e],testdict2["C/5 dis"]["U"][1,e],
+#                  0,
+#                  testdict2["C/5 ch"]["U"][1,e],testdict2["C/2 ch"]["U"][1,e],testdict2["3C/4 ch"]["U"][1,e],
+#                  testdict2["1C ch"]["U"][1,e]])
+# #U_data=[-0.478901,-0.018507,0,0.0198429,0.048844]
+# I_data=np.array([testdict2["1C dis"]["I"],
+#                  testdict2["3C/4 dis"]["I"],testdict2["C/2 dis"]["I"],testdict2["C/5 dis"]["I"],
+#                  0,
+#                  testdict2["C/5 ch"]["I"],testdict2["C/2 ch"]["I"],testdict2["3C/4 ch"]["I"],
+#                 testdict2["1C ch"]["I"]])
 
-U_data=np.array([testdict2["5.1A dis"]["U"][1,10],testdict2["1.5C dis"]["U"][1,10],testdict2["1C dis"]["U"][1,10],
-                 testdict2["3C/4 dis"]["U"][1,10],testdict2["C/2 dis"]["U"][1,10],testdict2["C/5 dis"]["U"][1,10],
+
+# p0 = [1.5, 0.5, 0.01]  # Startwerte: I0, alpha, IR
+# # bounds = (
+# #     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
+# #     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
+# # )
+
+# # popt, pcov = curve_fit(
+# #     model2, I_data, U_data,
+# #     p0=p0, bounds=bounds
+# # )
+# solution = fmin(cost_func2,p0,args=(U_data,I_data))  
+# # Ausgabe der Fit-Ergebnisse
+# I0_fit, alpha_fit, R_fit = solution
+# print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
+
+# # Fit-Kurve berechnen
+# U_fit = np.linspace(min(U_data), max(U_data), 100)
+# I_fit=np.linspace(min(I_data),max(I_data),100)
+# I_fit = model2(U_fit,I_fit, solution)
+
+# # Plot der Daten und des Fits
+# plt.scatter( U_data,I_data, label="Daten", color="blue")
+# plt.plot( U_fit,I_fit ,label="Fit", color="red")
+
+# plt.legend()
+# plt.grid()
+# plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
+# plt.show()
+#%%
+"""Butler Volmer Fit für alle Daten"""
+butler_fit=np.array([])
+butler_plot={}
+for a in range(len(testdict2["C/2 ch"]["U"][0,:])):
+    Udata=[0]
+    Idata=[0]
+    for i in testdict2.keys():
+        if "5.1A" not in i and "1.5C" not in i:
+            Udata.append(testdict2[i]["U"][1,a])
+            Idata.append(testdict2[i]["I"])
+            print(i)
+    Udata=np.sort(np.array(Udata))
+    Idata=np.sort(np.array(Idata))
+    p0 = [1.5, 0.5, 0.01]  # Startwerte: I0, alpha, IR
+    # bounds = (
+    #     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
+    #     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
+    # )
+
+    # popt, pcov = curve_fit(
+    #     model2, I_data, U_data,
+    #     p0=p0, bounds=bounds
+    # )
+    solution = fmin(cost_func2,p0,args=(Udata,Idata))  
+    # Ausgabe der Fit-Ergebnisse
+    I0_fit, alpha_fit, R_fit = solution
+    print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
+
+    # Fit-Kurve berechnen
+    Ufit = np.linspace(min(Udata), max(Udata), 100)
+    Ifit=np.linspace(min(Idata),max(Idata),100)
+    Ifitted = model2(Ufit,Ifit, solution)
+    
+    fit_t=np.array([testdict2["C/2 ch"]["U"][0,a],I0_fit, alpha_fit, R_fit])
+    plot_t=np.array([Ufit,Ifitted]).T
+    if a == 0:
+        butler_fit = fit_t
+    else:
+        butler_fit = np.column_stack([butler_fit, fit_t])
+    vol=testdict2["C/2 ch"]["U"][0,a]
+    butler_plot[f"{vol:.4f}"+" V"]=plot_t    
+#%%
+e=10
+U=np.array([testdict2["1C dis"]["U"][1,e],
+                 testdict2["3C/4 dis"]["U"][1,e],testdict2["C/2 dis"]["U"][1,e],testdict2["C/5 dis"]["U"][1,e],
                  0,
-                 testdict2["C/5 ch"]["U"][1,10],testdict2["C/2 ch"]["U"][1,10],testdict2["3C/4 ch"]["U"][1,10],
-                 testdict2["1C ch"]["U"][1,10],testdict2["1.5C ch"]["U"][1,10],testdict2["5.1A ch"]["U"][1,10]])
+                 testdict2["C/5 ch"]["U"][1,e],testdict2["C/2 ch"]["U"][1,e],testdict2["3C/4 ch"]["U"][1,e],
+                 testdict2["1C ch"]["U"][1,e]])
 #U_data=[-0.478901,-0.018507,0,0.0198429,0.048844]
-I_data=np.array([testdict2["5.1A dis"]["I"],testdict2["1.5C dis"]["I"],testdict2["1C dis"]["I"],
+I=np.array([testdict2["1C dis"]["I"],
                  testdict2["3C/4 dis"]["I"],testdict2["C/2 dis"]["I"],testdict2["C/5 dis"]["I"],
                  0,
                  testdict2["C/5 ch"]["I"],testdict2["C/2 ch"]["I"],testdict2["3C/4 ch"]["I"],
-                testdict2["1C ch"]["I"],testdict2["1.5C ch"]["I"],testdict2["5.1A ch"]["I"]])
+                testdict2["1C ch"]["I"]])
 
-
-p0 = [0.4, 0.3, 0.01]  # Startwerte: I0, alpha, IR
-# bounds = (
-#     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
-#     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
-# )
-
-# popt, pcov = curve_fit(
-#     model2, I_data, U_data,
-#     p0=p0, bounds=bounds
-# )
-solution = fmin(cost_func2,p0,args=(U_data,I_data))  
-# Ausgabe der Fit-Ergebnisse
-I0_fit, alpha_fit, R_fit = solution
-print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
-
-# Fit-Kurve berechnen
-U_fit = np.linspace(min(U_data), max(U_data), 100)
-I_fit=np.linspace(min(I_data),max(I_data),100)
-I_fit = model2(U_fit,I_fit, solution)
-
-# Plot der Daten und des Fits
-plt.scatter( U_data,I_data, label="Daten", color="blue")
-plt.plot( U_fit,I_fit ,label="Fit", color="red")
+plt.scatter( U,I, label="Daten", color="blue")
+plt.plot( butler_plot["3.0815 V"][:,0],butler_plot["3.0815 V"][:,1] ,label="Fit", color="red")
 
 plt.legend()
 plt.grid()
 plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
 plt.show()
 #%%
-U_data=np.array([moddata["5.1A dis"]["U"][1,82],moddata["1.5C dis"]["U"][1,82],moddata["1C dis"]["U"][1,82],
-                 moddata["3C/4 dis"]["U"][1,82],moddata["C/2 dis"]["U"][1,82],moddata["C/5 dis"]["U"][1,82],
-                 0,
-                 moddata["C/5 ch"]["U"][1,5],moddata["C/2 ch"]["U"][1,5],moddata["3C/4 ch"]["U"][1,5],
-                 moddata["1C ch"]["U"][1,5],moddata["1.5C ch"]["U"][1,5],moddata["5.1A ch"]["U"][1,5]])
-#U_data=[-0.478901,-0.018507,0,0.0198429,0.048844]
-I_data=np.array([moddata["5.1A dis"]["I"],moddata["1.5C dis"]["I"],moddata["1C dis"]["I"],
-                 moddata["3C/4 dis"]["I"],moddata["C/2 dis"]["I"],moddata["C/5 dis"]["I"],
-                 0,
-                 moddata["C/5 ch"]["I"],moddata["C/2 ch"]["I"],moddata["3C/4 ch"]["I"],
-                 moddata["1C ch"]["I"],moddata["1.5C ch"]["I"],moddata["5.1A ch"]["I"]])
+# U_data=np.array([moddata["5.1A dis"]["U"][1,82],moddata["1.5C dis"]["U"][1,82],moddata["1C dis"]["U"][1,82],
+#                   moddata["3C/4 dis"]["U"][1,82],moddata["C/2 dis"]["U"][1,82],moddata["C/5 dis"]["U"][1,82],
+#                   0,
+#                   moddata["C/5 ch"]["U"][1,5],moddata["C/2 ch"]["U"][1,5],moddata["3C/4 ch"]["U"][1,5],
+#                   moddata["1C ch"]["U"][1,5],moddata["1.5C ch"]["U"][1,5],moddata["5.1A ch"]["U"][1,5]])
+# #U_data=[-0.478901,-0.018507,0,0.0198429,0.048844]
+# I_data=np.array([moddata["5.1A dis"]["I"],moddata["1.5C dis"]["I"],moddata["1C dis"]["I"],
+#                   moddata["3C/4 dis"]["I"],moddata["C/2 dis"]["I"],moddata["C/5 dis"]["I"],
+#                   0,
+#                   moddata["C/5 ch"]["I"],moddata["C/2 ch"]["I"],moddata["3C/4 ch"]["I"],
+#                   moddata["1C ch"]["I"],moddata["1.5C ch"]["I"],moddata["5.1A ch"]["I"]])
 
 
-p0 = [0.4, 0.3, 0.01]  # Startwerte: I0, alpha, IR
-# bounds = (
-#     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
-#     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
-# )
+# p0 = [0.4, 0.3, 0.01]  # Startwerte: I0, alpha, IR
+# # bounds = (
+# #     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
+# #     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
+# # )
 
-# popt, pcov = curve_fit(
-#     model2, I_data, U_data,
-#     p0=p0, bounds=bounds
-# )
-solution = fmin(cost_func2,p0,args=(U_data,I_data))  
-# Ausgabe der Fit-Ergebnisse
-I0_fit, alpha_fit, R_fit = solution
-print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
+# # popt, pcov = curve_fit(
+# #     model2, I_data, U_data,
+# #     p0=p0, bounds=bounds
+# # )
+# solution = fmin(cost_func2,p0,args=(U_data,I_data))  
+# # Ausgabe der Fit-Ergebnisse
+# I0_fit, alpha_fit, R_fit = solution
+# print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
 
-# Fit-Kurve berechnen
-U_fit = np.linspace(min(U_data), max(U_data), 100)
-I_fit=np.linspace(min(I_data),max(I_data),100)
-I_fit = model2(U_fit,I_fit, solution)
+# # Fit-Kurve berechnen
+# U_fit = np.linspace(min(U_data), max(U_data), 100)
+# I_fit=np.linspace(min(I_data),max(I_data),100)
+# I_fit = model2(U_fit,I_fit, solution)
 
-# Plot der Daten und des Fits
-plt.scatter( U_data,I_data, label="Daten", color="blue")
-plt.plot( U_fit,I_fit ,label="Fit", color="red")
+# # Plot der Daten und des Fits
+# plt.scatter( U_data,I_data, label="Daten", color="blue")
+# plt.plot( U_fit,I_fit ,label="Fit", color="red")
 
-plt.legend()
-plt.grid()
-plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
-plt.show()
+# plt.legend()
+# plt.grid()
+# plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
+# plt.show()
