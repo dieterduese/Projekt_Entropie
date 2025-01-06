@@ -538,6 +538,10 @@ plt.legend()
 plt.grid()
 plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
 plt.show()
+
+plt.plot(butler_fit[0,:],butler_fit[2,:])
+plt.grid()
+plt.show()
 #%%
 # U_data=np.array([moddata["5.1A dis"]["U"][1,82],moddata["1.5C dis"]["U"][1,82],moddata["1C dis"]["U"][1,82],
 #                   moddata["3C/4 dis"]["U"][1,82],moddata["C/2 dis"]["U"][1,82],moddata["C/5 dis"]["U"][1,82],
