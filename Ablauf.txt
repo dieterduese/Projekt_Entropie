@@ -13,8 +13,8 @@ Ziel:
 Nächste Punkte:
 - [x] Butler-Volmer Verhalten der Zellen anhand der Messpunkte fitten (Heubner et al.)
 	- [ ] Für das Hysterese Verhalten (über SOC)
-	- [ ] Neue Daten einpflegen (Test kommt)
-- [ ] Vergleich der iOCV C/5 Graphen bei 25°C der drei Zellvarianten
+	- [x] Neue Daten einpflegen (Test kommt)
+- [x] Vergleich der iOCV C/5 Graphen bei 25°C der drei Zellvarianten
 - [ ] 2 RC Fit auf die iOCV (GITT) 
 	- [ ] Lookup Tabellen für:
 		- [x] R_o 

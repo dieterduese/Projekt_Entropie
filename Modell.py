@@ -121,8 +121,19 @@ def interp(ydata, xval):
     return np.column_stack([xq,yint])
 
 
-def consecutive(data, stepsize=5):
+def consecutive(data, stepsize=3.5):
     return np.split(data, np.where(np.diff(data[:,0]) >= stepsize)[0]+1)
+
+def consecutive_neu(data, stepsize=3.5):
+    # Berechne Differenzen in der Zeitspalte (data[:, 0]) und in der Testspalte (data[:, 1])
+    time_diff = np.diff(data[:, 0])
+    test_diff = np.diff(data[:, 1])
+    
+    # Bedingung: Zeitdifferenz >= stepsize und Veränderung in der Testspalte
+    split_indices = np.where((time_diff >= stepsize) & (test_diff != 0))[0] + 1
+    
+    # Array an den ermittelten Indizes aufteilen
+    return np.split(data, split_indices)
 
 def calcRi(data, datapoints):
     deltaU = data[datapoints-1,3] - data[datapoints,3]
@@ -246,11 +257,12 @@ def fit_with_curve_fit(x, y, charge):
 def hppc_fit_grenzen(array, lines, strom):
     puls_temp = []
     temp = filtplot(array, lines[1], lines[2], plot=0, col=2)
-    U1_temp = temp[:, 2]
-    time_temp = temp[:, 0]
-    splitted_temp = np.column_stack([time_temp, U1_temp])
-    splitted_temp = splitted_temp.astype(float)
-    splitted = consecutive(splitted_temp)
+    # U1_temp = temp[:, 2]
+    # time_temp = temp[:, 0]
+    # cap_temp = temp[:,4]
+    # splitted_temp = np.column_stack([time_temp, U1_temp,cap_temp])
+    splitted_temp = temp.astype(float)
+    splitted = consecutive_neu(splitted_temp)
     for i in range(len(splitted)):
         splitted[i] = process_array(splitted[i])
 
@@ -271,15 +283,15 @@ def hppc_fit_grenzen(array, lines, strom):
     plot_ges = []
     for i in range(len(splitted)):
         if i < len(strome):
-            R0 = abs((splitted[i][0, 1] - strom_split[i][-1, 2]) / strome[i])
-            U0 = abs((splitted[i][0, 1] - strom_split[i][-1, 2]))
-            UOCV=splitted[i][-1,1]
+            R0 = abs((splitted[i][0, 2] - strom_split[i][-1, 2]) / strome[i])
+            U0 = abs((splitted[i][0, 2] - strom_split[i][-1, 2]))
+            UOCV=splitted[i][-1,2]
         x = splitted[i][1:, 0] - splitted[i][0, 0]  # delta Zeit als x-Werte
         x = x[:]
-        if splitted[i][0, 1] > splitted[i][-1, 1]:
-            y = splitted[i][1:, 1] - splitted[i][-1, 1]  # delta U als y-Werte
+        if splitted[i][0, 2] > splitted[i][-1,2]:
+            y = splitted[i][1:, 2] - splitted[i][-1,2]  # delta U als y-Werte
         else:
-            y = splitted[i][1:, 1] - splitted[i][0, 1]
+            y = splitted[i][1:, 2] - splitted[i][0, 2]
 
         # Curve Fit anwenden
         try:
@@ -288,11 +300,12 @@ def hppc_fit_grenzen(array, lines, strom):
             plot_ges.append(plotVal)
 
             if i < len(strome):
+                cap=np.mean(splitted[i][:,4])
                 R1 = solution[0] / abs(strome[i])
-                C1 = solution[1] 
+                Tau1 = solution[1] 
                 R2 = solution[2] / abs(strome[i])
-                C2 = solution[3] 
-                fit = np.array([R0, R1, C1, R2, C2])
+                Tau2 = solution[3] 
+                fit = np.array([cap,R0, R1, Tau1, R2, Tau2])
                 mod=np.array([UOCV,U0])
                 if i == 0:
                     fit_ges = fit
@@ -303,6 +316,16 @@ def hppc_fit_grenzen(array, lines, strom):
 
         except RuntimeError as e:
             print(f"Curve fitting failed for pulse {i}: {e}")
+            
+    if laden==1:
+        fit_ges[0,:]-=fit_ges[0,0]
+    elif laden==0:
+        fit_ges[0,:]-=fit_ges[0,-1]
+    else:
+        print("Fehler bei Laderichtungsbestimmung")
+    SOC_vol=np.array([fit_ges[0,:],IR[0,:]])
+    
+    
     return plot_ges, fit_ges,strom_split,IR
 
 
@@ -402,7 +425,7 @@ for z in zellnamen:
         for i in range(len(lines)):
             temp=filtplot(data_t,lines[i][1],lines[i][2],plot=0,col=3)
             temp=temp.astype(float)
-            temp=consecutive(temp) 
+            temp=consecutive_neu(temp) 
             # for i in range(len(temp)):
             #     temp[i]=process_array(temp[i])
             hppc_data.append(temp)
@@ -418,14 +441,16 @@ for z in zellnamen:
         IR_all.append(IR_data)
 #%%
 fig,axes=plt.subplots(2,2)
-axes[0,0].plot(fit_all[0][0][1,:])
-axes[1,0].plot(fit_all[0][0][2,:])
-axes[0,1].plot(fit_all[0][0][3,:])
-axes[1,1].plot(fit_all[0][0][4,:])
-axes[0,0].plot(np.flip(fit_all[0][1][1,:]))
-axes[1,0].plot(np.flip(fit_all[0][1][2,:]))
-axes[0,1].plot(np.flip(fit_all[0][1][3,:]))
-axes[1,1].plot(np.flip(fit_all[0][1][4,:]))
+axes[0,0].plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][2,:])
+axes[1,0].plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][3,:])
+axes[0,1].plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][4,:])
+axes[1,1].plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][5,:])
+axes[0,0].plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][2,:])
+axes[1,0].plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][3,:])
+axes[0,1].plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][4,:])
+axes[1,1].plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][5,:])
+axes[0, 0].set_ylim(0, 0.05) 
+axes[0, 1].set_ylim(0, 0.05)
 plt.show()
 # axes[1,0].set_ylim(0,10000)
 #%%
@@ -434,60 +459,60 @@ plt.plot(np.linspace(hppc_data[0][d][0,0],hppc_data[0][d][-1,0],len(plot_all[0][
 plt.plot(hppc_data[0][d][:,0],hppc_data[0][d][:,2]-hppc_data[0][d][0,2])
 plt.show()
 #%%
-plt.plot(fit_all[0][0][0,:])
-plt.plot(fit_all[0][1][0,:])
+plt.plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][1,:])
+plt.plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][1,:])
 plt.show()
 #%%
 """anderes Modell"""
 
-moddata={"C/2 laden":{},"C/2 entladen":{},"C/5 laden":{},"C/5 entladen":{}}
-moddata["C/5 entladen"]["U"]=-IR_all[0][0]
-moddata["C/5 laden"]["U"]=IR_all[0][1]
-moddata["C/2 entladen"]["U"]=-IR_all[1][0]
-moddata["C/2 laden"]["U"]=IR_all[1][1]
-moddata["C/2 laden"]["I"]=1.56
-moddata["C/2 entladen"]["I"]=-1.56
-moddata["C/5 laden"]["I"]=0.624
-moddata["C/5 entladen"]["I"]=-0.624
+# moddata={"C/2 laden":{},"C/2 entladen":{},"C/5 laden":{},"C/5 entladen":{}}
+# moddata["C/5 entladen"]["U"]=-IR_all[0][0]
+# moddata["C/5 laden"]["U"]=IR_all[0][1]
+# moddata["C/2 entladen"]["U"]=-IR_all[1][0]
+# moddata["C/2 laden"]["U"]=IR_all[1][1]
+# moddata["C/2 laden"]["I"]=1.56
+# moddata["C/2 entladen"]["I"]=-1.56
+# moddata["C/5 laden"]["I"]=0.624
+# moddata["C/5 entladen"]["I"]=-0.624
 
 
-plt.scatter(moddata["C/5 entladen"]["U"][1,76],-0.624)
-plt.scatter(moddata["C/5 laden"]["U"][1,13],0.624)
-plt.scatter(0,0)
-plt.scatter(moddata["C/2 laden"]["U"][1,14],1.56)
-plt.scatter(moddata["C/2 entladen"]["U"][1,76],-1.56)
-#%%
-U_data=np.array([moddata["C/2 entladen"]["U"][1,84],moddata["C/5 entladen"]["U"][1,84],
-                 0,moddata["C/5 laden"]["U"][1,5],moddata["C/2 laden"]["U"][1,5]])
-#U_data=[-0.478901,-0.018507,0,0.0198429,0.048844]
-I_data=np.array([-1.56,-0.624,0,0.624,1.56])
+# plt.scatter(moddata["C/5 entladen"]["U"][1,76],-0.624)
+# plt.scatter(moddata["C/5 laden"]["U"][1,13],0.624)
+# plt.scatter(0,0)
+# plt.scatter(moddata["C/2 laden"]["U"][1,14],1.56)
+# plt.scatter(moddata["C/2 entladen"]["U"][1,76],-1.56)
+# #%%
+# U_data=np.array([moddata["C/2 entladen"]["U"][1,84],moddata["C/5 entladen"]["U"][1,84],
+#                  0,moddata["C/5 laden"]["U"][1,5],moddata["C/2 laden"]["U"][1,5]])
+# #U_data=[-0.478901,-0.018507,0,0.0198429,0.048844]
+# I_data=np.array([-1.56,-0.624,0,0.624,1.56])
 
 
-p0 = [0.4, 0.3, 0.01]  # Startwerte: I0, alpha, IR
-# bounds = (
-#     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
-#     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
-# )
+# p0 = [0.4, 0.3, 0.01]  # Startwerte: I0, alpha, IR
+# # bounds = (
+# #     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
+# #     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
+# # )
 
-# popt, pcov = curve_fit(
-#     model2, I_data, U_data,
-#     p0=p0, bounds=bounds
-# )
-solution = fmin(cost_func2,p0,args=(U_data,I_data))  
-# Ausgabe der Fit-Ergebnisse
-I0_fit, alpha_fit, R_fit = solution
-print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
+# # popt, pcov = curve_fit(
+# #     model2, I_data, U_data,
+# #     p0=p0, bounds=bounds
+# # )
+# solution = fmin(cost_func2,p0,args=(U_data,I_data))  
+# # Ausgabe der Fit-Ergebnisse
+# I0_fit, alpha_fit, R_fit = solution
+# print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
 
-# Fit-Kurve berechnen
-U_fit = np.linspace(min(U_data), max(U_data), 100)
-I_fit=np.linspace(min(I_data),max(I_data),100)
-I_fit = model2(U_fit,I_fit, solution)
+# # Fit-Kurve berechnen
+# U_fit = np.linspace(min(U_data), max(U_data), 100)
+# I_fit=np.linspace(min(I_data),max(I_data),100)
+# I_fit = model2(U_fit,I_fit, solution)
 
-# Plot der Daten und des Fits
-plt.scatter( U_data,I_data, label="Daten", color="blue")
-plt.plot( U_fit,I_fit ,label="Fit", color="red")
+# # Plot der Daten und des Fits
+# plt.scatter( U_data,I_data, label="Daten", color="blue")
+# plt.plot( U_fit,I_fit ,label="Fit", color="red")
 
-plt.legend()
-plt.grid()
-plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
-plt.show()
+# plt.legend()
+# plt.grid()
+# plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
+# plt.show()

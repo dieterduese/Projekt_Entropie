@@ -317,7 +317,9 @@ def model2(U0,I, param):
     )
 #%%
 """Daten laden"""
-initpath=r"C:\Users\maxim\Nextcloud\Shared\Austausch_Max\Projekt_Entropie\OCV_daten"
+# initpath=r"C:\Users\maxim\Nextcloud\Shared\Austausch_Max\Projekt_Entropie\OCV_daten"
+
+initpath=r"C:\Users\Dominik\tubCloud\Studis\Austausch_Max\Projekt_Entropie\OCV_daten"
 datei="dS24NCA10_ButlerVolmerGITT.txt"
 data_raw=load(initpath,datei,skip=0,separation=" ")
 data_temp=np.delete(data_raw,[1,2,3,5,10,12,13],1)

@@ -269,97 +269,71 @@ for z in data.keys():
     # Zeige den Plot
     plt.show()
 #%%
-# """Delta OCV"""
+"""iOCV C/5 Vergleich"""
+colors = ['#22a15c', '#00a6b3', '#cc0000', '#ff8000', '#808080']
+temp = ["25°C", "45°C"]
+savgol = {"C/20": 101, "C/5": 91, "C/2": 61}
 
-# colors = ['#22a15c', '#00a6b3', '#cc0000', '#ff8000', '#808080',"yellow"]
+co = 0
+c="C/5 iOCV"
+fig, axes = plt.subplots(3, 1, figsize=(8, 15))
+for z in data.keys():
+    ch = data[z]["ch"]["25°C"][c]["mean"]
+    dis = data[z]["dis"]["25°C"][c]["mean"]
+    dQ_ch = ch[:, 4] - min(ch[:, 4])
+    dQ_dis = dis[:, 4] - min(dis[:, 4])
 
-# # Schleife über Zellen und Lade-/Entladerichtungen
-# for cell, directions in DeltaOCV.items():
-#     DeltaOCV[cell] = {}
+    axes[0].plot(dQ_ch/dQ_ch[-1]*100, ch[:, 2], linestyle='--', color=colors[co])
+    axes[0].plot(dQ_dis/dQ_dis[0]*100, dis[:, 2], color=colors[co], label=z)
     
-#     for direction, temps in directions.items():
-#         DeltaOCV[cell][direction] = {}
-        
-#         # Sammle die Arrays für jede Temperatur
-#         temp_arrays = [temps[temp] for temp in temps]
-        
-#         # Bestimme die Länge des kürzesten Arrays
-#         min_length = min(arr.shape[0] for arr in temp_arrays)
-#         x_new = np.linspace(0, 1, min_length)
-        
-#         # Interpolation der Daten jeder Temperatur auf die kürzeste Länge
-#         for temp, ocv_array in temps.items():
-#             # Ursprüngliche x-Werte für die Interpolation
-#             x_orig = np.linspace(0, 1, ocv_array.shape[0])
-            
-#             # Interpoliere jede Spalte separat und speichere das Ergebnis
-#             interpolated_cols = [
-#                 interp1d(x_orig, ocv_array[:, col], kind='linear')(x_new)
-#                 for col in range(ocv_array.shape[1])
-#             ]
-            
-#             # Kombiniere die interpolierten Spalten und speichere sie im Ergebnis-Dictionary
-#             DeltaOCV[cell][direction][temp] = np.column_stack(interpolated_cols)
-
-# for cell in DeltaOCV:
-#     for direction in DeltaOCV[cell]:
-#         for temp in DeltaOCV[cell][direction]:
-#             mean_data = DeltaOCV[cell][direction][temp]
-#             # Normalisierung der OCV-Werte in Spalte 1
-#             mean_data[:, 1] -= min(mean_data[:, 1])  
-#             mean_data[:, 1] /= max(mean_data[:, 1])
-       
-            
-# for cell, directions in DeltaOCV.items():
-#     plt.figure(figsize=(10, 6))
-#     plt.title(f"{cell}")
+    dva_ch = DVA[z]["ch"]["25°C"][c]
+    dva_dis = DVA[z]["dis"]["25°C"][c]
     
+    dvaCH_filt = dva_ch[:, 1]
+    dvaDIS_filt = dva_dis[:, 1]
+    
+    axes[1].plot(dva_ch[:, 2]/dva_ch[-1,2]*100, dvaCH_filt, linestyle='--', color=colors[co])
+    axes[1].plot(dva_dis[:, 2]/dva_dis[0,2]*100, dvaDIS_filt, color=colors[co], label=z)
+    
+    ica_ch = ICA[z]["ch"]["25°C"][c]
+    ica_dis = ICA[z]["dis"]["25°C"][c]
+    
+    icaCH_filt = ica_ch[:, 1]
+    icaDIS_filt = ica_dis[:, 1]
+    
+    axes[2].plot(ica_ch[:, 2], icaCH_filt, linestyle='--', color=colors[co])
+    axes[2].plot(ica_dis[:, 2], icaDIS_filt, color=colors[co], label=z)
+    
+    co += 1
 
-#     # Schleife über die Lade- und Entladerichtungen (ch und dis)
-#     for direction, temps in directions.items():
-#         temp_keys = list(temps.keys())
-        
-#         color_index = 0  # Initialisiere den Farbindex
+# Beschriftungen und Einstellungen für jeden Plot
+axes[0].set_ylabel('OCV (V)')
+axes[0].set_xlabel('SOC (%)')
+axes[0].grid()
+axes[0].legend()
 
-#         # Prüfe, ob mindestens zwei Temperaturen vorhanden sind, um Differenzen zu berechnen
-#         if len(temp_keys) >= 2:
-#             soc_values = temps[temp_keys[0]][:, 1]  # SOC-Werte für x-Achse (erste Spalte)
-#             ocv_5_values = temps[temp_keys[0]][:, 0]  # OCV-Werte für 5°C (nullte Spalte)
-#             ocv_25_values = temps[temp_keys[1]][:, 0]  # OCV-Werte für 25°C
-#             ocv_45_values = temps[temp_keys[2]][:, 0]  # OCV-Werte für 45°C
-            
-#             # Berechne die Differenzen der OCV-Werte zwischen den Temperaturen
-#             delta_5_25 = ocv_25_values - ocv_5_values
-#             delta_5_45 = ocv_45_values - ocv_5_values
-#             delta_25_45 = ocv_45_values - ocv_25_values
+axes[1].set_ylabel('dV/dQ (V/Ah)')
+axes[1].set_xlabel('SOC (%)')
+axes[1].set_ylim(-0.5, 0.5)
+axes[1].grid()
+axes[1].legend()
 
-#             # Definiere die Temperatur-Differenz-Paare und ihre Berechnungen
-#             delta_pairs = {
-#                 "5°C - 25°C": delta_5_25,
-#                 "5°C - 45°C": delta_5_45,
-#                 "25°C - 45°C": delta_25_45
-#             }
+axes[2].set_ylabel('dQ/dV (Ah/V)')
+axes[2].set_xlabel('U (V)')
+axes[2].set_xlim(left=3)
+axes[2].grid()
+axes[2].legend()
 
-#             # Plot der Differenzen je Temperaturpaar für jede Lade-/Entladerichtung
-#             for label, delta in delta_pairs.items():
-#                 # Linienart und Farbe festlegen
-#                 line_style = '--' if direction == 'ch' else '-'
-#                 color = colors[color_index]
-                
-#                 # Plot für die Richtung und Differenz anzeigen
-#                 if direction == 'dis':
-#                     plt.plot(soc_values * 100, delta, color=color, linestyle=line_style, label=f"{label}")
-#                 else:
-#                     plt.plot(soc_values * 100, delta, color=color, linestyle=line_style)
+# Passe das Layout der Subplots und den Abstand an
+plt.tight_layout()
 
-#                 color_index += 1
+# Setzt den Titel oberhalb der Figur
+fig.suptitle("C/5 iOCV 25°C", fontsize=18, y=0.95)
+plt.subplots_adjust(top=0.93)  # Platz für den Titel schaffen
 
-#     # Plot-Anpassungen und Anzeige
-#     plt.xlabel("SOC (%)")
-#     plt.ylabel("ΔOCV (V)")
-#     plt.legend()
-#     plt.grid()
-#     plt.show()
+# Zeige den Plot
+plt.show()
+
   #%%
 """Delta OCV Variante 2"""
 DeltaOCV_2={"C/5 iOCV":{},"C/20":{}}
