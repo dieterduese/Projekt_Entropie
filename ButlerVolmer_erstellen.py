@@ -100,7 +100,7 @@ def interp(ydata, xval):
     return np.column_stack([xq,yint])
 
 
-def consecutive(data, stepsize=1.5):
+def consecutive(data, stepsize=3):
     return np.split(data, np.where(np.diff(data[:,0]) >= stepsize)[0]+1)
 
 def consecutive_neu(data, stepsize=1.5):
