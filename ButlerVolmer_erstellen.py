@@ -317,22 +317,25 @@ def model2(U0,I, param):
     )
 #%%
 """Daten laden"""
-# initpath=r"C:\Users\maxim\Nextcloud\Shared\Austausch_Max\Projekt_Entropie\OCV_daten"
+initpath=r"C:\Users\maxim\Nextcloud\Shared\Austausch_Max\Projekt_Entropie\OCV_daten"
 
-initpath=r"C:\Users\Dominik\tubCloud\Studis\Austausch_Max\Projekt_Entropie\OCV_daten"
+# initpath=r"C:\Users\Dominik\tubCloud\Studis\Austausch_Max\Projekt_Entropie\OCV_daten"
 datei="dS24NCA10_ButlerVolmerGITT.txt"
+datei2="dS24NCA10_ButlerVolmerGITT_lowI.txt"
 data_raw=load(initpath,datei,skip=0,separation=" ")
 data_temp=np.delete(data_raw,[1,2,3,5,10,12,13],1)
 data=data_temp
+data_raw2=load(initpath,datei2,skip=0,separation=" ")
+data_temp2=np.delete(data_raw2,[1,2,3,5,10,12,13],1)
+data2=data_temp2
 #%%
 test=filtplot(data,0,109,plot=1,col=4)
 #%%
 lines_iOCV_dis=[[19,20,21],[35,36,37],[51,52,53],[67,68,69],[83,84,85],[99,100,101]]
 lines_iOCV_ch=[[27,28,29],[43,44,45],[59,60,61],[75,76,77],[91,92,93],[107,108,109]]
-
 OCV={"ch":{},"dis":{}}
 c_rate=["C/5","C/2","3C/4","1C","1.5C","5.1A"]
-
+c_rate2=["C/20","C/10"]
 
 
 l=0
@@ -346,14 +349,30 @@ for i in lines_iOCV_ch:
     
     
 l=0
+for i in lines_iOCV_ch[:2]:
+    tempch=filtplot(data2,i[0],i[2],plot=0,col=2)
 
+    OCV["ch"][c_rate2[l]]=np.asarray(tempch,dtype=np.float64)
+
+    l+=1
+    
+l=0 
 for i in lines_iOCV_dis:
     tempdis=filtplot(data,i[0],i[2],plot=0,col=2)
 
     OCV["dis"][c_rate[l]]=np.asarray(tempdis,dtype=np.float64)
 
     l+=1
+    
+l=0
+for i in lines_iOCV_dis[:2]:
+    tempdis=filtplot(data2,i[0],i[2],plot=0,col=2)
 
+    OCV["dis"][c_rate2[l]]=np.asarray(tempdis,dtype=np.float64)
+
+    l+=1
+       
+#%%
 fit_all=[]
 plot_all=[]
 hppc_data=[]
@@ -363,6 +382,31 @@ for a in range(len(lines_iOCV_ch)):
     #Entladepulse(20,21)
     lines=[lines_iOCV_dis[a],lines_iOCV_ch[a]]
     data_t=data.copy()
+    data_t[:,0]=data_t[:,0]*3600
+    strome=[]
+    for i in range(len(lines)):
+        temp=filtplot(data_t,lines[i][1],lines[i][2],plot=0,col=3)
+        temp=temp.astype(float)
+        temp=consecutive_neu(temp) 
+        # for i in range(len(temp)):
+        #     temp[i]=process_array(temp[i])
+        hppc_data.append(temp)
+    plot_data,fit_data,IR_data=[],[],[]
+    for i in range(len(lines)):
+        plot_temp,fit_temp,strom,IR =hppc_fit_grenzen(data_t,lines[i],0)
+        fit_temp=np.vstack([fit_temp])
+        plot_data.append(plot_temp)
+        fit_data.append(fit_temp)
+        IR_data.append(IR)
+    plot_all.append(plot_data)
+    fit_all.append(fit_data)    
+    IR_all.append(IR_data)
+    
+for a in range(len(lines_iOCV_ch[:2])):
+    #Ladepulse(27,28)
+    #Entladepulse(20,21)
+    lines=[lines_iOCV_dis[a],lines_iOCV_ch[a]]
+    data_t=data2.copy()
     data_t[:,0]=data_t[:,0]*3600
     strome=[]
     for i in range(len(lines)):
@@ -395,9 +439,9 @@ axes[0,1].plot(np.flip(fit_all[0][1][3,:]))
 axes[1,1].plot(np.flip(fit_all[0][1][4,:]))
 plt.show()
 #%%
-d=10
-plt.plot(np.linspace(hppc_data[0][d][0,0],hppc_data[0][d][-1,0],len(plot_all[0][0][d])),plot_all[0][0][d][:])
-plt.plot(hppc_data[0][d][:,0],hppc_data[0][d][:,2]-hppc_data[0][d][0,2])
+d=90
+plt.plot(np.linspace(hppc_data[14][d][0,0],hppc_data[14][d][-1,0],len(plot_all[7][0][d])),plot_all[7][0][d][:])
+plt.plot(hppc_data[14][d][:,0],hppc_data[14][d][:,2]-hppc_data[14][d][0,2])
 plt.show()
 #%%
 """Butler-Volmer"""
@@ -416,6 +460,7 @@ for direction in OCV.keys():
         # moddata[f"{c}"+" "+f"{direction}"]["I"]=np.mean(OCV[direction][c][1:10,3])
 
         t+=1
+
 #%%
 import copy
 
@@ -523,27 +568,35 @@ for a in range(len(testdict2["C/2 ch"]["U"][0,:])):
 e=10
 U=np.array([testdict2["1C dis"]["U"][1,e],
                  testdict2["3C/4 dis"]["U"][1,e],testdict2["C/2 dis"]["U"][1,e],testdict2["C/5 dis"]["U"][1,e],
+                 testdict2["C/10 dis"]["U"][1,e],testdict2["C/20 dis"]["U"][1,e],
                  0,
+                 testdict2["C/20 ch"]["U"][1,e],testdict2["C/10 ch"]["U"][1,e],
                  testdict2["C/5 ch"]["U"][1,e],testdict2["C/2 ch"]["U"][1,e],testdict2["3C/4 ch"]["U"][1,e],
                  testdict2["1C ch"]["U"][1,e]])
 #U_data=[-0.478901,-0.018507,0,0.0198429,0.048844]
 I=np.array([testdict2["1C dis"]["I"],
                  testdict2["3C/4 dis"]["I"],testdict2["C/2 dis"]["I"],testdict2["C/5 dis"]["I"],
+                 testdict2["C/10 dis"]["I"],testdict2["C/20 dis"]["I"],
                  0,
+                 testdict2["C/20 ch"]["I"],testdict2["C/10 ch"]["I"],
                  testdict2["C/5 ch"]["I"],testdict2["C/2 ch"]["I"],testdict2["3C/4 ch"]["I"],
                 testdict2["1C ch"]["I"]])
 
 plt.scatter( U,I, label="Daten", color="blue")
-plt.plot( butler_plot["3.0815 V"][:,0],butler_plot["3.0815 V"][:,1] ,label="Fit", color="red")
+plt.plot( butler_plot["3.0815 V"][:,0],butler_plot["3.0815 V"][:,1] ,label="Fit 3.0815V", color="red")
 
 plt.legend()
 plt.grid()
 plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
 plt.show()
 
-plt.plot(butler_fit[0,:],butler_fit[2,:])
-plt.grid()
-plt.show()
+# plt.plot(butler_fit[0,:],butler_fit[2,:])
+# plt.grid()
+# plt.show()
+#%%
+a="C/10 dis"
+plt.plot(testdict[a]["U"][0,:],testdict[a]["U"][1,:])
+plt.plot(testdict2[a]["U"][0,:],testdict2[a]["U"][1,:])
 #%%
 # U_data=np.array([moddata["5.1A dis"]["U"][1,82],moddata["1.5C dis"]["U"][1,82],moddata["1C dis"]["U"][1,82],
 #                   moddata["3C/4 dis"]["U"][1,82],moddata["C/2 dis"]["U"][1,82],moddata["C/5 dis"]["U"][1,82],

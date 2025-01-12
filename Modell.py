@@ -319,6 +319,7 @@ def hppc_fit_grenzen(array, lines, strom):
             
     if laden==1:
         fit_ges[0,:]-=fit_ges[0,0]
+        # SOC=fit_ges[0,:]/fit_ges[0,-1]
     elif laden==0:
         fit_ges[0,:]-=fit_ges[0,-1]
     else:
@@ -326,7 +327,7 @@ def hppc_fit_grenzen(array, lines, strom):
     SOC_vol=np.array([fit_ges[0,:],IR[0,:]])
     
     
-    return plot_ges, fit_ges,strom_split,IR
+    return plot_ges, fit_ges,strom_split,IR, SOC_vol
 
 
 def cost_func2(initial_param,x,y):
@@ -414,6 +415,7 @@ for z in zellnamen:
     plot_all=[]
     hppc_data=[]
     IR_all=[]
+    SOC_vol_all=[]
     for a in range(len(lines_iOCV_ch)):
         #Ladepulse(27,28)
         #Entladepulse(20,21)
@@ -429,16 +431,18 @@ for z in zellnamen:
             # for i in range(len(temp)):
             #     temp[i]=process_array(temp[i])
             hppc_data.append(temp)
-        plot_data,fit_data,IR_data=[],[],[]
+        plot_data,fit_data,IR_data,SOC_vol_data=[],[],[],[]
         for i in range(len(lines)):
-            plot_temp,fit_temp,strom,IR =hppc_fit_grenzen(data_t,lines[i],0)
+            plot_temp,fit_temp,strom,IR,SOC_vol =hppc_fit_grenzen(data_t,lines[i],0)
             fit_temp=np.vstack([fit_temp])
             plot_data.append(plot_temp)
             fit_data.append(fit_temp)
             IR_data.append(IR)
+            SOC_vol_data.append(SOC_vol)
         plot_all.append(plot_data)
         fit_all.append(fit_data)    
         IR_all.append(IR_data)
+        SOC_vol_all.append(SOC_vol_data)
 #%%
 fig,axes=plt.subplots(2,2)
 axes[0,0].plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][2,:])
