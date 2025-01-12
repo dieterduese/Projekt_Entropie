@@ -220,7 +220,7 @@ def fit_with_curve_fit(x, y, charge):
     # Grenzen für die Parameter
     bounds_lower = [0, 1, 0, 1]  # Untere Grenzen: U1, tau1, U2, tau2
     # bounds_upper = [0.1, 600, 0.1, 600]  # Obere Grenzen: U1, tau1, U2, tau2
-    bounds_upper = [1, 50, 1, 200]  
+    bounds_upper = [1, 50, 1, 400]  
 
     
     # Anonyme Funktion für die Richtung (Laden/Entladen)
@@ -236,10 +236,11 @@ def fit_with_curve_fit(x, y, charge):
 def hppc_fit_grenzen(array, lines, strom):
     puls_temp = []
     temp = filtplot(array, lines[1], lines[2], plot=0, col=2)
-    U1_temp = temp[:, 2]
-    time_temp = temp[:, 0]
-    splitted_temp = np.column_stack([time_temp, U1_temp])
-    splitted_temp = splitted_temp.astype(float)
+    # U1_temp = temp[:, 2]
+    # time_temp = temp[:, 0]
+    # cap_temp = temp[:,4]
+    # splitted_temp = np.column_stack([time_temp, U1_temp,cap_temp])
+    splitted_temp = temp.astype(float)
     splitted = consecutive_neu(splitted_temp)
     for i in range(len(splitted)):
         splitted[i] = process_array(splitted[i])
@@ -261,15 +262,15 @@ def hppc_fit_grenzen(array, lines, strom):
     plot_ges = []
     for i in range(len(splitted)):
         if i < len(strome):
-            R0 = abs((splitted[i][0, 1] - strom_split[i][-1, 2]) / strome[i])
-            U0 = abs((splitted[i][0, 1] - strom_split[i][-1, 2]))
-            UOCV=splitted[i][-1,1]
+            R0 = abs((splitted[i][0, 2] - strom_split[i][-1, 2]) / strome[i])
+            U0 = abs((splitted[i][0, 2] - strom_split[i][-1, 2]))
+            UOCV=splitted[i][-1,2]
         x = splitted[i][1:, 0] - splitted[i][0, 0]  # delta Zeit als x-Werte
         x = x[:]
-        if splitted[i][0, 1] > splitted[i][-1, 1]:
-            y = splitted[i][1:, 1] - splitted[i][-1, 1]  # delta U als y-Werte
+        if splitted[i][0, 2] > splitted[i][-1,2]:
+            y = splitted[i][1:, 2] - splitted[i][-1,2]  # delta U als y-Werte
         else:
-            y = splitted[i][1:, 1] - splitted[i][0, 1]
+            y = splitted[i][1:, 2] - splitted[i][0, 2]
 
         # Curve Fit anwenden
         try:
@@ -278,11 +279,12 @@ def hppc_fit_grenzen(array, lines, strom):
             plot_ges.append(plotVal)
 
             if i < len(strome):
+                cap=np.mean(splitted[i][:,4])
                 R1 = solution[0] / abs(strome[i])
-                C1 = solution[1] 
+                Tau1 = solution[1] 
                 R2 = solution[2] / abs(strome[i])
-                C2 = solution[3] 
-                fit = np.array([R0, R1, C1, R2, C2])
+                Tau2 = solution[3] 
+                fit = np.array([cap,R0, R1, Tau1, R2, Tau2])
                 mod=np.array([UOCV,U0])
                 if i == 0:
                     fit_ges = fit
@@ -293,6 +295,17 @@ def hppc_fit_grenzen(array, lines, strom):
 
         except RuntimeError as e:
             print(f"Curve fitting failed for pulse {i}: {e}")
+            
+    if laden==1:
+        fit_ges[0,:]-=fit_ges[0,0]
+        # SOC=fit_ges[0,:]/fit_ges[0,-1]
+    elif laden==0:
+        fit_ges[0,:]-=fit_ges[0,-1]
+    else:
+        print("Fehler bei Laderichtungsbestimmung")
+    SOC_vol=np.array([fit_ges[0,:],IR[0,:]])
+    
+    
     return plot_ges, fit_ges,strom_split,IR
 
 
@@ -373,10 +386,11 @@ for i in lines_iOCV_dis[:2]:
     l+=1
        
 #%%
-fit_all=[]
-plot_all=[]
+fit_all={}
+plot_all={}
 hppc_data=[]
-IR_all=[]
+IR_all={}
+l=0
 for a in range(len(lines_iOCV_ch)):
     #Ladepulse(27,28)
     #Entladepulse(20,21)
@@ -398,10 +412,11 @@ for a in range(len(lines_iOCV_ch)):
         plot_data.append(plot_temp)
         fit_data.append(fit_temp)
         IR_data.append(IR)
-    plot_all.append(plot_data)
-    fit_all.append(fit_data)    
-    IR_all.append(IR_data)
-    
+    plot_all[c_rate[l]]=plot_data
+    fit_all[c_rate[l]]=fit_data    
+    IR_all[c_rate[l]]=IR_data
+    l+=1
+l=0    
 for a in range(len(lines_iOCV_ch[:2])):
     #Ladepulse(27,28)
     #Entladepulse(20,21)
@@ -423,25 +438,58 @@ for a in range(len(lines_iOCV_ch[:2])):
         plot_data.append(plot_temp)
         fit_data.append(fit_temp)
         IR_data.append(IR)
-    plot_all.append(plot_data)
-    fit_all.append(fit_data)    
-    IR_all.append(IR_data)
+    plot_all[c_rate2[l]]=plot_data
+    fit_all[c_rate2[l]]=fit_data    
+    IR_all[c_rate2[l]]=IR_data
+    l+=1
 
 #%%
-fig,axes=plt.subplots(2,2)
-axes[0,0].plot(fit_all[0][0][1,:])
-axes[1,0].plot(fit_all[0][0][2,:])
-axes[0,1].plot(fit_all[0][0][3,:])
-axes[1,1].plot(fit_all[0][0][4,:])
-axes[0,0].plot(np.flip(fit_all[0][1][1,:]))
-axes[1,0].plot(np.flip(fit_all[0][1][2,:]))
-axes[0,1].plot(np.flip(fit_all[0][1][3,:]))
-axes[1,1].plot(np.flip(fit_all[0][1][4,:]))
+c="C/5"
+fig,axes=plt.subplots(2,2,figsize=(10, 7))
+axes[0,0].plot(fit_all[c][0][0,:]/fit_all[c][0][0,0]*100,fit_all[c][0][2,:],label="dis")
+axes[1,0].plot(fit_all[c][0][0,:]/fit_all[c][0][0,0]*100,fit_all[c][0][3,:])
+axes[0,1].plot(fit_all[c][0][0,:]/fit_all[c][0][0,0]*100,fit_all[c][0][4,:])
+axes[1,1].plot(fit_all[c][0][0,:]/fit_all[c][0][0,0]*100,fit_all[c][0][5,:])
+axes[0,0].plot(fit_all[c][1][0,:]/fit_all[c][1][0,-1]*100,fit_all[c][1][2,:],label="ch")
+axes[1,0].plot(fit_all[c][1][0,:]/fit_all[c][1][0,-1]*100,fit_all[c][1][3,:])
+axes[0,1].plot(fit_all[c][1][0,:]/fit_all[c][1][0,-1]*100,fit_all[c][1][4,:])
+axes[1,1].plot(fit_all[c][1][0,:]/fit_all[c][1][0,-1]*100,fit_all[c][1][5,:])
+axes[0, 0].set_ylim(0, 0.05) 
+axes[0, 1].set_ylim(0, 0.05)
+axes[0,0].set_title("R1")
+axes[0,1].set_title("R2")
+axes[1,0].set_title("C1")
+axes[1,1].set_title("C2")
+axes[0,0].legend()
+plt.show()
+#%%
+c="C/2"
+fig,axes=plt.subplots(2,2,figsize=(10, 7))
+axes[0,0].plot(IR_all[c][1][0,:],fit_all[c][0][2,:],label="dis")
+axes[1,0].plot(IR_all[c][1][0,:],fit_all[c][0][3,:])
+axes[0,1].plot(IR_all[c][1][0,:],fit_all[c][0][4,:])
+axes[1,1].plot(IR_all[c][1][0,:],fit_all[c][0][5,:])
+axes[0,0].plot(IR_all[c][1][0,:],fit_all[c][1][2,:],label="ch")
+axes[1,0].plot(IR_all[c][1][0,:],fit_all[c][1][3,:])
+axes[0,1].plot(IR_all[c][1][0,:],fit_all[c][1][4,:])
+axes[1,1].plot(IR_all[c][1][0,:],fit_all[c][1][5,:])
+axes[0,0].legend()
+axes[0,0].set_title("R1")
+axes[0,1].set_title("R2")
+axes[1,0].set_title("C1")
+axes[1,1].set_title("C2")
+
+
+
+# axes[0, 0].set_ylim(0, 0.05) 
+# axes[0, 1].set_ylim(0, 0.05)
 plt.show()
 #%%
 d=90
-plt.plot(np.linspace(hppc_data[14][d][0,0],hppc_data[14][d][-1,0],len(plot_all[7][0][d])),plot_all[7][0][d][:])
-plt.plot(hppc_data[14][d][:,0],hppc_data[14][d][:,2]-hppc_data[14][d][0,2])
+c1=14
+c2="C/10"
+plt.plot(np.linspace(hppc_data[c1][d][0,0],hppc_data[c1][d][-1,0],len(plot_all[c2][0][d])),plot_all[c2][0][d][:])
+plt.plot(hppc_data[c1][d][:,0],hppc_data[c1][d][:,2]-hppc_data[c1][d][0,2])
 plt.show()
 #%%
 """Butler-Volmer"""
@@ -589,10 +637,11 @@ plt.legend()
 plt.grid()
 plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
 plt.show()
-
-# plt.plot(butler_fit[0,:],butler_fit[2,:])
-# plt.grid()
-# plt.show()
+#%%
+#alpha
+plt.plot(butler_fit[0,:],butler_fit[2,:])
+plt.grid()
+plt.show()
 #%%
 a="C/10 dis"
 plt.plot(testdict[a]["U"][0,:],testdict[a]["U"][1,:])
