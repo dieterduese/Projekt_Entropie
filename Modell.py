@@ -355,7 +355,7 @@ def model2(U0,I, param):
 
 path=r"C:\Users\maxim\Nextcloud\Shared\Austausch_Max\Projekt_Entropie\OCV_Varianten"
 zellnamen=os.listdir(path)
-zellnamen=["dS24NCA01"]
+# zellnamen=["dS24NCA01"]
 c_rate=["C/5 iOCV","C/2 iOCV"]
 
 OCV={}
@@ -426,7 +426,7 @@ for z in zellnamen:
         #Ladepulse(27,28)
         #Entladepulse(20,21)
         lines=[lines_iOCV_dis[a],lines_iOCV_ch[a]]
-        data_t=dict_test["dS24NCA01_OCV_25deg.txt"]
+        data_t=dict_test[z+"_OCV_25deg.txt"]
         data_t = data_t.astype("float64")
         data_t[:,0]=data_t[:,0]*3600
         strome=[]
