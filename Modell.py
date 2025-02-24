@@ -241,7 +241,7 @@ def fit_with_curve_fit(x, y, charge):
     # Grenzen für die Parameter
     bounds_lower = [0, 1, 0, 1]  # Untere Grenzen: U1, tau1, U2, tau2
     # bounds_upper = [0.1, 600, 0.1, 600]  # Obere Grenzen: U1, tau1, U2, tau2
-    bounds_upper = [1, 50, 1, 200]  
+    bounds_upper = [1, 50, 1, 300]  
 
     
     # Anonyme Funktion für die Richtung (Laden/Entladen)
@@ -319,7 +319,7 @@ def hppc_fit_grenzen(array, lines, strom):
             
     if laden==1:
         fit_ges[0,:]-=fit_ges[0,0]
-        # SOC=fit_ges[0,:]/fit_ges[0,-1]
+        SOC=fit_ges[0,:]/fit_ges[0,-1]
     elif laden==0:
         fit_ges[0,:]-=fit_ges[0,-1]
     else:
@@ -360,6 +360,11 @@ c_rate=["C/5 iOCV","C/2 iOCV"]
 
 OCV={}
 #%%
+fit_all={}
+plot_all={}
+hppc_data={}
+IR_all={}
+SOC_vol_all={}
 for z in zellnamen:
     initpath=path+"/"+z
     # initpath=r"C:\Users\Dominik\tubCloud\Studis\Austausch_Max\Projekt_Entropie\OCV_Varianten\AMNMC065"
@@ -411,11 +416,12 @@ for z in zellnamen:
     
             l+=1
 
-    fit_all=[]
-    plot_all=[]
-    hppc_data=[]
-    IR_all=[]
-    SOC_vol_all=[]
+    fit_all[z]={}
+    plot_all[z]={}
+    hppc_data[z]=[]
+    IR_all[z]={}
+    SOC_vol_all[z]={}
+    l=0
     for a in range(len(lines_iOCV_ch)):
         #Ladepulse(27,28)
         #Entladepulse(20,21)
@@ -430,7 +436,7 @@ for z in zellnamen:
             temp=consecutive_neu(temp) 
             # for i in range(len(temp)):
             #     temp[i]=process_array(temp[i])
-            hppc_data.append(temp)
+            hppc_data[z].append(temp)
         plot_data,fit_data,IR_data,SOC_vol_data=[],[],[],[]
         for i in range(len(lines)):
             plot_temp,fit_temp,strom,IR,SOC_vol =hppc_fit_grenzen(data_t,lines[i],0)
@@ -439,22 +445,31 @@ for z in zellnamen:
             fit_data.append(fit_temp)
             IR_data.append(IR)
             SOC_vol_data.append(SOC_vol)
-        plot_all.append(plot_data)
-        fit_all.append(fit_data)    
-        IR_all.append(IR_data)
-        SOC_vol_all.append(SOC_vol_data)
+        plot_all[z][c_rate[l]]=plot_data
+        fit_all[z][c_rate[l]]=fit_data
+        IR_all[z][c_rate[l]]=IR_data
+        SOC_vol_all[z][c_rate[l]]=SOC_vol_data
+        l+=1
 #%%
-fig,axes=plt.subplots(2,2)
-axes[0,0].plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][2,:])
-axes[1,0].plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][3,:])
-axes[0,1].plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][4,:])
-axes[1,1].plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][5,:])
-axes[0,0].plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][2,:])
-axes[1,0].plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][3,:])
-axes[0,1].plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][4,:])
-axes[1,1].plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][5,:])
+zelle="dS24NCA01"
+c="C/5 iOCV"
+lade=0
+fig,axes=plt.subplots(2,2,figsize=(10, 7))
+axes[0,0].plot(fit_all[zelle][c][0][0,:]/fit_all[zelle][c][0][0,0]*100,fit_all[zelle][c][0][2,:],label="dis")
+axes[1,0].plot(fit_all[zelle][c][0][0,:]/fit_all[zelle][c][0][0,0]*100,fit_all[zelle][c][0][3,:])
+axes[0,1].plot(fit_all[zelle][c][0][0,:]/fit_all[zelle][c][0][0,0]*100,fit_all[zelle][c][0][4,:])
+axes[1,1].plot(fit_all[zelle][c][0][0,:]/fit_all[zelle][c][0][0,0]*100,fit_all[zelle][c][0][5,:])
+axes[0,0].plot(fit_all[zelle][c][1][0,:]/fit_all[zelle][c][1][0,-1]*100,fit_all[zelle][c][1][2,:],label="ch")
+axes[1,0].plot(fit_all[zelle][c][1][0,:]/fit_all[zelle][c][1][0,-1]*100,fit_all[zelle][c][1][3,:])
+axes[0,1].plot(fit_all[zelle][c][1][0,:]/fit_all[zelle][c][1][0,-1]*100,fit_all[zelle][c][1][4,:])
+axes[1,1].plot(fit_all[zelle][c][1][0,:]/fit_all[zelle][c][1][0,-1]*100,fit_all[zelle][c][1][5,:])
 axes[0, 0].set_ylim(0, 0.05) 
 axes[0, 1].set_ylim(0, 0.05)
+axes[0,0].set_title("R1")
+axes[0,1].set_title("R2")
+axes[1,0].set_title("C1")
+axes[1,1].set_title("C2")
+axes[0,0].legend()
 plt.show()
 # axes[1,0].set_ylim(0,10000)
 #%%
