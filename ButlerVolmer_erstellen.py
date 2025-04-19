@@ -738,17 +738,46 @@ I = np.array([testdictU["1C dis"]["I"],
 plt.scatter(U, I, label="Daten", color="blue")
 plt.plot(butler_plot["Spannung"]["3.0815"][:, 0], butler_plot["Spannung"]["3.0815"][:, 1], label="Fit 3.0815V", color="red")
 
+plt.xlabel("$U_{R}(V)$")
+plt.ylabel("I(A)")
 plt.legend()
 plt.grid()
 plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
 plt.show()
 
 #%%
+"""Parameter plotten"""
+colors = ['#22a15c', '#00a6b3', '#cc0000', '#ff8000', '#808080',"yellow"]
+for x in butler_fit.keys():
 # alpha
-plt.plot(butler_fit["Spannung"][0, :], butler_fit["Spannung"][2, :])
-# plt.plot(butler_fit["Kapazität"][0, :], butler_fit["Kapazität"][2, :])
-plt.grid()
-plt.show()
+    fig, axes = plt.subplots(3, 1, figsize=(6, 9), sharex=True)  # 3 Zeilen, 1 Spalte
+    
+    # Erster Plot
+    axes[0].plot(butler_fit[x][0, :], butler_fit[x][1, :],color=colors[0])
+    axes[0].grid()
+    axes[0].set_ylabel("$I_{0}$")
+    
+    # Zweiter Plot
+    axes[1].plot(butler_fit[x][0, :], butler_fit[x][2, :],color=colors[1])
+    axes[1].grid()
+    axes[1].set_ylabel("α")
+    
+    # Dritter Plot
+    axes[2].plot(butler_fit[x][0, :], butler_fit[x][3, :],color=colors[2])
+    axes[2].grid()
+    if x=="Spannung":
+        axes[2].set_xlabel("U(V)")
+    elif x=="Kapazität":
+        axes[2].set_xlabel("Q(Ah)")
+    else:
+        print("Fehler: unbekannte x-Achse")
+
+        
+    axes[2].set_ylabel("R")
+    
+    plt.tight_layout()  # Optimiert die Abstände zwischen den Plots
+    plt.show()
+
 
 #%%
 a = "C/10 dis"
@@ -775,6 +804,8 @@ I = np.array([testdictQ["1C dis"]["I"],
 plt.scatter(U, I, label="Daten", color="blue")
 plt.plot(butler_plot["Kapazität"]["0.2430"][:, 0], butler_plot["Kapazität"]["0.2430"][:, 1], label="Fit 0.2430Ah", color="red")
 
+plt.xlabel("$U_{R}(V)$")
+plt.ylabel("I(A)")
 plt.legend()
 plt.grid()
 plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
