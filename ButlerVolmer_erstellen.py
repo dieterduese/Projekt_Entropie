@@ -515,10 +515,10 @@ ylims={"C/20":0.05,"C/10":0.05,"C/5":0.05, "C/2":0.04,
 
 for c in fit_all.keys():
     fig,axes=plt.subplots(2,2,figsize=(10, 7))
-    axes[0,0].plot(IR_all[c][1][0,:],fit_all[c][0][2,:],label="dis")
-    axes[1,0].plot(IR_all[c][1][0,:],fit_all[c][0][3,:])
-    axes[0,1].plot(IR_all[c][1][0,:],fit_all[c][0][4,:])
-    axes[1,1].plot(IR_all[c][1][0,:],fit_all[c][0][5,:])
+    axes[0,0].plot(IR_all[c][0][0,:],fit_all[c][0][2,:],label="dis")
+    axes[1,0].plot(IR_all[c][0][0,:],fit_all[c][0][3,:])
+    axes[0,1].plot(IR_all[c][0][0,:],fit_all[c][0][4,:])
+    axes[1,1].plot(IR_all[c][0][0,:],fit_all[c][0][5,:])
     axes[0,0].plot(IR_all[c][1][0,:],fit_all[c][1][2,:],label="ch")
     axes[1,0].plot(IR_all[c][1][0,:],fit_all[c][1][3,:])
     axes[0,1].plot(IR_all[c][1][0,:],fit_all[c][1][4,:])
