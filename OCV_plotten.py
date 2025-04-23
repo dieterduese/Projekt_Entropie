@@ -273,7 +273,6 @@ for z in data.keys():
 colors = ['#22a15c', '#00a6b3', '#cc0000', '#ff8000', '#808080']
 temp = ["25°C", "45°C"]
 savgol = {"C/20": 101, "C/5": 91, "C/2": 61}
-
 co = 0
 c="C/5 iOCV"
 fig, axes = plt.subplots(3, 1, figsize=(8, 15))
