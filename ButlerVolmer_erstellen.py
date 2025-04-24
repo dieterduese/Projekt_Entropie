@@ -376,9 +376,9 @@ def butler_volmer_fit(testdictV):
     return butler_fit_t,butler_plot_t
 #%%
 """Daten laden"""
-initpath=r"C:\Users\maxim\Nextcloud\Shared\Austausch_Max\Projekt_Entropie\OCV_daten"
+# initpath=r"C:\Users\maxim\Nextcloud\Shared\Austausch_Max\Projekt_Entropie\OCV_daten"
 
-# initpath=r"C:\Users\Dominik\tubCloud\Studis\Austausch_Max\Projekt_Entropie\OCV_daten"
+initpath=r"C:\Users\Dominik\tubCloud\Studis\Austausch_Max\Projekt_Entropie\OCV_daten"
 datei="dS24NCA10_ButlerVolmerGITT.txt"
 datei2="dS24NCA10_ButlerVolmerGITT_lowI.txt"
 data_raw=load(initpath,datei,skip=0,separation=" ")
@@ -742,6 +742,8 @@ plt.xlabel("$U_{R}(V)$")
 plt.ylabel("I(A)")
 plt.legend()
 plt.grid()
+plt.ylabel("I (A)")
+plt.xlabel("$\eta$ (V)")
 plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
 plt.show()
 
