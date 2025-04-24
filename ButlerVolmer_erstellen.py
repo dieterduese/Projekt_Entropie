@@ -100,7 +100,7 @@ def interp(ydata, xval):
     return np.column_stack([xq,yint])
 
 
-def consecutive(data, stepsize=1.5):
+def consecutive(data, stepsize=3):
     return np.split(data, np.where(np.diff(data[:,0]) >= stepsize)[0]+1)
 
 def consecutive_neu(data, stepsize=1.5):
@@ -220,7 +220,7 @@ def fit_with_curve_fit(x, y, charge):
     # Grenzen für die Parameter
     bounds_lower = [0, 1, 0, 1]  # Untere Grenzen: U1, tau1, U2, tau2
     # bounds_upper = [0.1, 600, 0.1, 600]  # Obere Grenzen: U1, tau1, U2, tau2
-    bounds_upper = [1, 50, 1, 200]  
+    bounds_upper = [1, 50, 1, 400]  
 
     
     # Anonyme Funktion für die Richtung (Laden/Entladen)
@@ -236,10 +236,11 @@ def fit_with_curve_fit(x, y, charge):
 def hppc_fit_grenzen(array, lines, strom):
     puls_temp = []
     temp = filtplot(array, lines[1], lines[2], plot=0, col=2)
-    U1_temp = temp[:, 2]
-    time_temp = temp[:, 0]
-    splitted_temp = np.column_stack([time_temp, U1_temp])
-    splitted_temp = splitted_temp.astype(float)
+    # U1_temp = temp[:, 2]
+    # time_temp = temp[:, 0]
+    # cap_temp = temp[:,4]
+    # splitted_temp = np.column_stack([time_temp, U1_temp,cap_temp])
+    splitted_temp = temp.astype(float)
     splitted = consecutive_neu(splitted_temp)
     for i in range(len(splitted)):
         splitted[i] = process_array(splitted[i])
@@ -261,15 +262,15 @@ def hppc_fit_grenzen(array, lines, strom):
     plot_ges = []
     for i in range(len(splitted)):
         if i < len(strome):
-            R0 = abs((splitted[i][0, 1] - strom_split[i][-1, 2]) / strome[i])
-            U0 = abs((splitted[i][0, 1] - strom_split[i][-1, 2]))
-            UOCV=splitted[i][-1,1]
+            R0 = abs((splitted[i][0, 2] - strom_split[i][-1, 2]) / strome[i])
+            U0 = abs((splitted[i][0, 2] - strom_split[i][-1, 2]))
+            UOCV=splitted[i][-1,2]
         x = splitted[i][1:, 0] - splitted[i][0, 0]  # delta Zeit als x-Werte
         x = x[:]
-        if splitted[i][0, 1] > splitted[i][-1, 1]:
-            y = splitted[i][1:, 1] - splitted[i][-1, 1]  # delta U als y-Werte
+        if splitted[i][0, 2] > splitted[i][-1,2]:
+            y = splitted[i][1:, 2] - splitted[i][-1,2]  # delta U als y-Werte
         else:
-            y = splitted[i][1:, 1] - splitted[i][0, 1]
+            y = splitted[i][1:, 2] - splitted[i][0, 2]
 
         # Curve Fit anwenden
         try:
@@ -278,12 +279,13 @@ def hppc_fit_grenzen(array, lines, strom):
             plot_ges.append(plotVal)
 
             if i < len(strome):
+                cap=np.mean(splitted[i][:,4])
                 R1 = solution[0] / abs(strome[i])
-                C1 = solution[1] 
+                Tau1 = solution[1] 
                 R2 = solution[2] / abs(strome[i])
-                C2 = solution[3] 
-                fit = np.array([R0, R1, C1, R2, C2])
-                mod=np.array([UOCV,U0])
+                Tau2 = solution[3] 
+                fit = np.array([cap,R0, R1, Tau1, R2, Tau2])
+                mod=np.array([cap,UOCV,U0])
                 if i == 0:
                     fit_ges = fit
                     IR=mod
@@ -293,6 +295,19 @@ def hppc_fit_grenzen(array, lines, strom):
 
         except RuntimeError as e:
             print(f"Curve fitting failed for pulse {i}: {e}")
+            
+    if laden==1:
+        IR[0,:]-=IR[0,0]
+        fit_ges[0,:]-=fit_ges[0,0]
+        # SOC=fit_ges[0,:]/fit_ges[0,-1]
+    elif laden==0:
+        IR[0,:]-=IR[0,-1]
+        fit_ges[0,:]-=fit_ges[0,-1]
+    else:
+        print("Fehler bei Laderichtungsbestimmung")
+    SOC_vol=np.array([fit_ges[0,:],IR[0,:]])
+    
+    
     return plot_ges, fit_ges,strom_split,IR
 
 
@@ -315,6 +330,50 @@ def model2(U0,I, param):
         np.exp((alpha * z * F / (R_const * T)) * hct) -
         np.exp(-(1 - alpha) * z * F / (R_const * T) * hct)
     )
+def butler_volmer_fit(testdictV):
+    butler_fit_t=np.array([])
+    butler_plot_t={}
+    for a in range(len(testdictV["C/2 ch"]["U"][0,:])):
+        Udata=[0]
+        Idata=[0]
+        for i in testdictV.keys():
+            if "5.1A" not in i and "1.5C" not in i:
+                Udata.append(testdictV[i]["U"][1,a])
+                Idata.append(testdictV[i]["I"])
+                print(i)
+        Udata=np.sort(np.array(Udata))
+        Idata=np.sort(np.array(Idata))
+        p0 = [1.5, 0.5, 0.01]  # Startwerte: I0, alpha, IR
+        # bounds = (
+        #     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
+        #     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
+        # )
+
+        # popt, pcov = curve_fit(
+        #     model2, I_data, U_data,
+        #     p0=p0, bounds=bounds
+        # )
+        solution = fmin(cost_func2,p0,args=(Udata,Idata))  
+        # Ausgabe der Fit-Ergebnisse
+        I0_fit, alpha_fit, R_fit = solution
+        print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
+
+        # Fit-Kurve berechnen
+        Ufit = np.linspace(min(Udata), max(Udata), 100)
+        Ifit=np.linspace(min(Idata),max(Idata),100)
+        Ifitted = model2(Ufit,Ifit, solution)
+        
+        fit_t=np.array([testdictV["C/2 ch"]["U"][0,a],I0_fit, alpha_fit, R_fit])
+        plot_t=np.array([Ufit,Ifitted]).T
+        if a == 0:
+            butler_fit_t = fit_t
+        else:
+            butler_fit_t = np.column_stack([butler_fit_t, fit_t])
+        vol=testdictV["C/2 ch"]["U"][0,a]
+        butler_plot_t[f"{vol:.4f}"]=plot_t 
+        
+        
+    return butler_fit_t,butler_plot_t
 #%%
 """Daten laden"""
 # initpath=r"C:\Users\maxim\Nextcloud\Shared\Austausch_Max\Projekt_Entropie\OCV_daten"
@@ -373,10 +432,11 @@ for i in lines_iOCV_dis[:2]:
     l+=1
        
 #%%
-fit_all=[]
-plot_all=[]
+fit_all={}
+plot_all={}
 hppc_data=[]
-IR_all=[]
+IR_all={}
+l=0
 for a in range(len(lines_iOCV_ch)):
     #Ladepulse(27,28)
     #Entladepulse(20,21)
@@ -398,10 +458,11 @@ for a in range(len(lines_iOCV_ch)):
         plot_data.append(plot_temp)
         fit_data.append(fit_temp)
         IR_data.append(IR)
-    plot_all.append(plot_data)
-    fit_all.append(fit_data)    
-    IR_all.append(IR_data)
-    
+    plot_all[c_rate[l]]=plot_data
+    fit_all[c_rate[l]]=fit_data    
+    IR_all[c_rate[l]]=IR_data
+    l+=1
+l=0    
 for a in range(len(lines_iOCV_ch[:2])):
     #Ladepulse(27,28)
     #Entladepulse(20,21)
@@ -423,61 +484,149 @@ for a in range(len(lines_iOCV_ch[:2])):
         plot_data.append(plot_temp)
         fit_data.append(fit_temp)
         IR_data.append(IR)
-    plot_all.append(plot_data)
-    fit_all.append(fit_data)    
-    IR_all.append(IR_data)
+    plot_all[c_rate2[l]]=plot_data
+    fit_all[c_rate2[l]]=fit_data    
+    IR_all[c_rate2[l]]=IR_data
+    l+=1
 
 #%%
-fig,axes=plt.subplots(2,2)
-axes[0,0].plot(fit_all[0][0][1,:])
-axes[1,0].plot(fit_all[0][0][2,:])
-axes[0,1].plot(fit_all[0][0][3,:])
-axes[1,1].plot(fit_all[0][0][4,:])
-axes[0,0].plot(np.flip(fit_all[0][1][1,:]))
-axes[1,0].plot(np.flip(fit_all[0][1][2,:]))
-axes[0,1].plot(np.flip(fit_all[0][1][3,:]))
-axes[1,1].plot(np.flip(fit_all[0][1][4,:]))
+c="C/5"
+fig,axes=plt.subplots(2,2,figsize=(10, 7))
+axes[0,0].plot(fit_all[c][0][0,:]/fit_all[c][0][0,0]*100,fit_all[c][0][2,:],label="dis")
+axes[1,0].plot(fit_all[c][0][0,:]/fit_all[c][0][0,0]*100,fit_all[c][0][3,:])
+axes[0,1].plot(fit_all[c][0][0,:]/fit_all[c][0][0,0]*100,fit_all[c][0][4,:])
+axes[1,1].plot(fit_all[c][0][0,:]/fit_all[c][0][0,0]*100,fit_all[c][0][5,:])
+axes[0,0].plot(fit_all[c][1][0,:]/fit_all[c][1][0,-1]*100,fit_all[c][1][2,:],label="ch")
+axes[1,0].plot(fit_all[c][1][0,:]/fit_all[c][1][0,-1]*100,fit_all[c][1][3,:])
+axes[0,1].plot(fit_all[c][1][0,:]/fit_all[c][1][0,-1]*100,fit_all[c][1][4,:])
+axes[1,1].plot(fit_all[c][1][0,:]/fit_all[c][1][0,-1]*100,fit_all[c][1][5,:])
+axes[0, 0].set_ylim(0, 0.05) 
+axes[0, 1].set_ylim(0, 0.05)
+axes[0,0].set_title("R1")
+axes[0,1].set_title("R2")
+axes[1,0].set_title("C1")
+axes[1,1].set_title("C2")
+axes[0,0].legend()
 plt.show()
 #%%
+c="C/2"
+ylims={"C/20":0.05,"C/10":0.05,"C/5":0.05, "C/2":0.04,
+       "5.1A":0.012,"1.5C":0.012,"1C":0.018,"3C/4":0.025}
+
+for c in fit_all.keys():
+    fig,axes=plt.subplots(2,2,figsize=(10, 7))
+    axes[0,0].plot(IR_all[c][1][0,:],fit_all[c][0][2,:],label="dis")
+    axes[1,0].plot(IR_all[c][1][0,:],fit_all[c][0][3,:])
+    axes[0,1].plot(IR_all[c][1][0,:],fit_all[c][0][4,:])
+    axes[1,1].plot(IR_all[c][1][0,:],fit_all[c][0][5,:])
+    axes[0,0].plot(IR_all[c][1][0,:],fit_all[c][1][2,:],label="ch")
+    axes[1,0].plot(IR_all[c][1][0,:],fit_all[c][1][3,:])
+    axes[0,1].plot(IR_all[c][1][0,:],fit_all[c][1][4,:])
+    axes[1,1].plot(IR_all[c][1][0,:],fit_all[c][1][5,:])
+    axes[0,0].legend()
+    axes[0,0].set_title("R1")
+    axes[0,1].set_title("R2")
+    axes[1,0].set_title("C1")
+    axes[1,1].set_title("C2")
+    axes[0, 0].set_ylim(0, ylims[c]) 
+    axes[0, 1].set_ylim(0, ylims[c])
+    fig.suptitle(c, fontsize=14, fontweight='bold', y=0.95)
+    plt.show()
+#%%
+"""Alle Fits ein Plot"""
+col = ['#22a15c', '#00a6b3', '#cc0000', '#ff8000', '#808080', 'yellow', '#6a0dad', '#8B4513']
+i=0
+fig,axes=plt.subplots(2,2,figsize=(10, 7))
+for c in fit_all.keys():
+    axes[0,0].plot(IR_all[c][1][0,:],fit_all[c][0][2,:],color=col[i],label=c)
+    axes[1,0].plot(IR_all[c][1][0,:],fit_all[c][0][3,:],color=col[i])
+    axes[0,1].plot(IR_all[c][1][0,:],fit_all[c][0][4,:],color=col[i])
+    axes[1,1].plot(IR_all[c][1][0,:],fit_all[c][0][5,:],color=col[i])
+
+    i+=1
+axes[0,0].legend()
+axes[0,0].set_title("R1")
+axes[0,1].set_title("R2")
+axes[1,0].set_title("C1")
+axes[1,1].set_title("C2")
+axes[0, 0].set_ylim(0, 0.03) 
+axes[0, 1].set_ylim(0, 0.03)
+fig.suptitle("Entladerichtung", fontsize=14, fontweight='bold', y=0.95)
+plt.show()
+
+
+i=0
+fig,axes=plt.subplots(2,2,figsize=(10, 7))
+for c in fit_all.keys():
+
+    axes[0,0].plot(IR_all[c][1][0,:],fit_all[c][1][2,:],color=col[i],label=c)
+    axes[1,0].plot(IR_all[c][1][0,:],fit_all[c][1][3,:],color=col[i])
+    axes[0,1].plot(IR_all[c][1][0,:],fit_all[c][1][4,:],color=col[i])
+    axes[1,1].plot(IR_all[c][1][0,:],fit_all[c][1][5,:],color=col[i])
+    i+=1
+axes[0,0].legend()
+axes[0,0].set_title("R1")
+axes[0,1].set_title("R2")
+axes[1,0].set_title("C1")
+axes[1,1].set_title("C2")
+axes[0, 0].set_ylim(0, 0.03) 
+axes[0, 1].set_ylim(0, 0.03)
+fig.suptitle("Laderichtung", fontsize=14, fontweight='bold', y=0.95)
+plt.show()
+
+
+
+#%%
 d=90
-plt.plot(np.linspace(hppc_data[14][d][0,0],hppc_data[14][d][-1,0],len(plot_all[7][0][d])),plot_all[7][0][d][:])
-plt.plot(hppc_data[14][d][:,0],hppc_data[14][d][:,2]-hppc_data[14][d][0,2])
+c1=14
+c2="C/10"
+plt.plot(np.linspace(hppc_data[c1][d][0,0],hppc_data[c1][d][-1,0],len(plot_all[c2][0][d])),plot_all[c2][0][d][:])
+plt.plot(hppc_data[c1][d][:,0],hppc_data[c1][d][:,2]-hppc_data[c1][d][0,2])
 plt.show()
 #%%
 """Butler-Volmer"""
 moddata={}
 for direction in OCV.keys():
-    t=0
+    
     for c in OCV[direction].keys():
         moddata[f"{c}"+" "+f"{direction}"]={}
         if direction=="ch":
-            moddata[f"{c}"+" "+f"{direction}"]["U"]=IR_all[t][1]
+            moddata[f"{c}"+" "+f"{direction}"]["U"]=IR_all[c][1]
         elif direction=="dis":
-            moddata[f"{c}"+" "+f"{direction}"]["U"]=np.array([IR_all[t][0][0,:],-IR_all[t][0][1,:]])
+            moddata[f"{c}"+" "+f"{direction}"]["U"]=np.array([IR_all[c][0][0,:],IR_all[c][0][1,:],-IR_all[c][0][2,:]])
         else:
             print("falsche Laderichtung")
         moddata[f"{c}"+" "+f"{direction}"]["I"]=OCV[direction][c][5,3]
         # moddata[f"{c}"+" "+f"{direction}"]["I"]=np.mean(OCV[direction][c][1:10,3])
 
-        t+=1
+        
 
 #%%
 import copy
 
 testdict = copy.deepcopy(moddata)
-testdict2=copy.deepcopy(testdict)
+testdictU=copy.deepcopy(testdict)
+testdictQ=copy.deepcopy(testdict)
 
 minvol=[]
-maxvol=[]    
+maxvol=[]  
+mincap=[]
+maxcap=[]  
 for i in testdict.keys():
-    minvol.append(min(testdict[i]["U"][0,:]))
-    maxvol.append(max(testdict[i]["U"][0,:]))
+    mincap.append(min(testdict[i]["U"][0,:]))
+    maxcap.append(max(testdict[i]["U"][0,:]))
+    minvol.append(min(testdict[i]["U"][1,:]))
+    maxvol.append(max(testdict[i]["U"][1,:]))
 commonvol=np.linspace(max(minvol),min(maxvol),100)
+commoncap=np.linspace(max(mincap),min(maxcap),100)
 for i in testdict.keys():
     
-    f1=interp1d(testdict[i]["U"][0,:],testdict[i]["U"][1,:],kind='linear')
-    interpU=f1(commonvol)
-    testdict2[i]["U"]=np.array([commonvol,interpU])
+    f1U=interp1d(testdict[i]["U"][1,:],testdict[i]["U"][2,:],kind='linear')
+    interpU=f1U(commonvol)
+    testdictU[i]["U"]=np.array([commonvol,interpU])
+    f1Q=interp1d(testdict[i]["U"][0,:],testdict[i]["U"][2,:],kind='linear')
+    interpQ=f1Q(commoncap)
+    testdictQ[i]["U"]=np.array([commoncap,interpQ])
 #%%
 # Butler Volmer testen
 # e=10
@@ -523,68 +672,74 @@ for i in testdict.keys():
 # plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
 # plt.show()
 #%%
-"""Butler Volmer Fit für alle Daten"""
-butler_fit=np.array([])
-butler_plot={}
-for a in range(len(testdict2["C/2 ch"]["U"][0,:])):
-    Udata=[0]
-    Idata=[0]
-    for i in testdict2.keys():
-        if "5.1A" not in i and "1.5C" not in i:
-            Udata.append(testdict2[i]["U"][1,a])
-            Idata.append(testdict2[i]["I"])
-            print(i)
-    Udata=np.sort(np.array(Udata))
-    Idata=np.sort(np.array(Idata))
-    p0 = [1.5, 0.5, 0.01]  # Startwerte: I0, alpha, IR
-    # bounds = (
-    #     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
-    #     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
-    # )
+"""Butler Volmer Fit über Spannung"""
+butler_fit={"Kapazität":{},"Spannung":{}}
+butler_plot={"Kapazität":{},"Spannung":{}}
+butler_fit["Spannung"],butler_plot["Spannung"]=butler_volmer_fit(testdictU)
+butler_fit["Kapazität"],butler_plot["Kapazität"]=butler_volmer_fit(testdictQ)
 
-    # popt, pcov = curve_fit(
-    #     model2, I_data, U_data,
-    #     p0=p0, bounds=bounds
-    # )
-    solution = fmin(cost_func2,p0,args=(Udata,Idata))  
-    # Ausgabe der Fit-Ergebnisse
-    I0_fit, alpha_fit, R_fit = solution
-    print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
+# for a in range(len(testdictU["C/2 ch"]["U"][0,:])):
+#     Udata=[0]
+#     Idata=[0]
+#     for i in testdictU.keys():
+#         if "5.1A" not in i and "1.5C" not in i:
+#             Udata.append(testdictU[i]["U"][1,a])
+#             Idata.append(testdictU[i]["I"])
+#             print(i)
+#     Udata=np.sort(np.array(Udata))
+#     Idata=np.sort(np.array(Idata))
+#     p0 = [1.5, 0.5, 0.01]  # Startwerte: I0, alpha, IR
+#     # bounds = (
+#     #     [0, 0.1, 0.01],  # Untergrenzen: I0, alpha, IR
+#     #     [1.0, 2, 10],     # Obergrenzen: I0, alpha, IR
+#     # )
 
-    # Fit-Kurve berechnen
-    Ufit = np.linspace(min(Udata), max(Udata), 100)
-    Ifit=np.linspace(min(Idata),max(Idata),100)
-    Ifitted = model2(Ufit,Ifit, solution)
+#     # popt, pcov = curve_fit(
+#     #     model2, I_data, U_data,
+#     #     p0=p0, bounds=bounds
+#     # )
+#     solution = fmin(cost_func2,p0,args=(Udata,Idata))  
+#     # Ausgabe der Fit-Ergebnisse
+#     I0_fit, alpha_fit, R_fit = solution
+#     print(f"Fit-Ergebnisse:\nI0: {I0_fit:.4e}\nalpha: {alpha_fit:.4f}\nR: {R_fit:.4f}")
+
+#     # Fit-Kurve berechnen
+#     Ufit = np.linspace(min(Udata), max(Udata), 100)
+#     Ifit=np.linspace(min(Idata),max(Idata),100)
+#     Ifitted = model2(Ufit,Ifit, solution)
     
-    fit_t=np.array([testdict2["C/2 ch"]["U"][0,a],I0_fit, alpha_fit, R_fit])
-    plot_t=np.array([Ufit,Ifitted]).T
-    if a == 0:
-        butler_fit = fit_t
-    else:
-        butler_fit = np.column_stack([butler_fit, fit_t])
-    vol=testdict2["C/2 ch"]["U"][0,a]
-    butler_plot[f"{vol:.4f}"+" V"]=plot_t    
+#     fit_t=np.array([testdictU["C/2 ch"]["U"][0,a],I0_fit, alpha_fit, R_fit])
+#     plot_t=np.array([Ufit,Ifitted]).T
+#     if a == 0:
+#         butler_fit_t = fit_t
+#     else:
+#         butler_fit_t = np.column_stack([butler_fit_t, fit_t])
+#     vol=testdictU["C/2 ch"]["U"][0,a]
+#     butler_plot["Spannung"][f"{vol:.4f}"+" V"]=plot_t 
+# butler_fit["Spannung"]=butler_fit_t
 #%%
-e=10
-U=np.array([testdict2["1C dis"]["U"][1,e],
-                 testdict2["3C/4 dis"]["U"][1,e],testdict2["C/2 dis"]["U"][1,e],testdict2["C/5 dis"]["U"][1,e],
-                 testdict2["C/10 dis"]["U"][1,e],testdict2["C/20 dis"]["U"][1,e],
-                 0,
-                 testdict2["C/20 ch"]["U"][1,e],testdict2["C/10 ch"]["U"][1,e],
-                 testdict2["C/5 ch"]["U"][1,e],testdict2["C/2 ch"]["U"][1,e],testdict2["3C/4 ch"]["U"][1,e],
-                 testdict2["1C ch"]["U"][1,e]])
-#U_data=[-0.478901,-0.018507,0,0.0198429,0.048844]
-I=np.array([testdict2["1C dis"]["I"],
-                 testdict2["3C/4 dis"]["I"],testdict2["C/2 dis"]["I"],testdict2["C/5 dis"]["I"],
-                 testdict2["C/10 dis"]["I"],testdict2["C/20 dis"]["I"],
-                 0,
-                 testdict2["C/20 ch"]["I"],testdict2["C/10 ch"]["I"],
-                 testdict2["C/5 ch"]["I"],testdict2["C/2 ch"]["I"],testdict2["3C/4 ch"]["I"],
-                testdict2["1C ch"]["I"]])
+e = 10
+U = np.array([testdictU["1C dis"]["U"][1, e],
+              testdictU["3C/4 dis"]["U"][1, e], testdictU["C/2 dis"]["U"][1, e], testdictU["C/5 dis"]["U"][1, e],
+              testdictU["C/10 dis"]["U"][1, e], testdictU["C/20 dis"]["U"][1, e],
+              0,
+              testdictU["C/20 ch"]["U"][1, e], testdictU["C/10 ch"]["U"][1, e],
+              testdictU["C/5 ch"]["U"][1, e], testdictU["C/2 ch"]["U"][1, e], testdictU["3C/4 ch"]["U"][1, e],
+              testdictU["1C ch"]["U"][1, e]])
 
-plt.scatter( U,I, label="Daten", color="blue")
-plt.plot( butler_plot["3.0815 V"][:,0],butler_plot["3.0815 V"][:,1] ,label="Fit 3.0815V", color="red")
+I = np.array([testdictU["1C dis"]["I"],
+              testdictU["3C/4 dis"]["I"], testdictU["C/2 dis"]["I"], testdictU["C/5 dis"]["I"],
+              testdictU["C/10 dis"]["I"], testdictU["C/20 dis"]["I"],
+              0,
+              testdictU["C/20 ch"]["I"], testdictU["C/10 ch"]["I"],
+              testdictU["C/5 ch"]["I"], testdictU["C/2 ch"]["I"], testdictU["3C/4 ch"]["I"],
+              testdictU["1C ch"]["I"]])
 
+plt.scatter(U, I, label="Daten", color="blue")
+plt.plot(butler_plot["Spannung"]["3.0815"][:, 0], butler_plot["Spannung"]["3.0815"][:, 1], label="Fit 3.0815V", color="red")
+
+plt.xlabel("$U_{R}(V)$")
+plt.ylabel("I(A)")
 plt.legend()
 plt.grid()
 plt.ylabel("I (A)")
@@ -592,13 +747,72 @@ plt.xlabel("$\eta$ (V)")
 plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
 plt.show()
 
-# plt.plot(butler_fit[0,:],butler_fit[2,:])
-# plt.grid()
-# plt.show()
 #%%
-a="C/10 dis"
-plt.plot(testdict[a]["U"][0,:],testdict[a]["U"][1,:])
-plt.plot(testdict2[a]["U"][0,:],testdict2[a]["U"][1,:])
+"""Parameter plotten"""
+colors = ['#22a15c', '#00a6b3', '#cc0000', '#ff8000', '#808080',"yellow"]
+for x in butler_fit.keys():
+# alpha
+    fig, axes = plt.subplots(3, 1, figsize=(6, 9), sharex=True)  # 3 Zeilen, 1 Spalte
+    
+    # Erster Plot
+    axes[0].plot(butler_fit[x][0, :], butler_fit[x][1, :],color=colors[0])
+    axes[0].grid()
+    axes[0].set_ylabel("$I_{0}$")
+    
+    # Zweiter Plot
+    axes[1].plot(butler_fit[x][0, :], butler_fit[x][2, :],color=colors[1])
+    axes[1].grid()
+    axes[1].set_ylabel("α")
+    
+    # Dritter Plot
+    axes[2].plot(butler_fit[x][0, :], butler_fit[x][3, :],color=colors[2])
+    axes[2].grid()
+    if x=="Spannung":
+        axes[2].set_xlabel("U(V)")
+    elif x=="Kapazität":
+        axes[2].set_xlabel("Q(Ah)")
+    else:
+        print("Fehler: unbekannte x-Achse")
+
+        
+    axes[2].set_ylabel("R")
+    
+    plt.tight_layout()  # Optimiert die Abstände zwischen den Plots
+    plt.show()
+
+
+#%%
+a = "C/10 dis"
+plt.plot(testdict[a]["U"][0, :], testdict[a]["U"][1, :])
+plt.plot(testdictU[a]["U"][0, :], testdictU[a]["U"][1, :])
+#%%
+e = 10
+U = np.array([testdictQ["1C dis"]["U"][1, e],
+              testdictQ["3C/4 dis"]["U"][1, e], testdictQ["C/2 dis"]["U"][1, e], testdictQ["C/5 dis"]["U"][1, e],
+              testdictQ["C/10 dis"]["U"][1, e], testdictQ["C/20 dis"]["U"][1, e],
+              0,
+              testdictQ["C/20 ch"]["U"][1, e], testdictQ["C/10 ch"]["U"][1, e],
+              testdictQ["C/5 ch"]["U"][1, e], testdictQ["C/2 ch"]["U"][1, e], testdictQ["3C/4 ch"]["U"][1, e],
+              testdictQ["1C ch"]["U"][1, e]])
+
+I = np.array([testdictQ["1C dis"]["I"],
+              testdictQ["3C/4 dis"]["I"], testdictQ["C/2 dis"]["I"], testdictQ["C/5 dis"]["I"],
+              testdictQ["C/10 dis"]["I"], testdictQ["C/20 dis"]["I"],
+              0,
+              testdictQ["C/20 ch"]["I"], testdictQ["C/10 ch"]["I"],
+              testdictQ["C/5 ch"]["I"], testdictQ["C/2 ch"]["I"], testdictQ["3C/4 ch"]["I"],
+              testdictQ["1C ch"]["I"]])
+
+plt.scatter(U, I, label="Daten", color="blue")
+plt.plot(butler_plot["Kapazität"]["0.2430"][:, 0], butler_plot["Kapazität"]["0.2430"][:, 1], label="Fit 0.2430Ah", color="red")
+
+plt.xlabel("$U_{R}(V)$")
+plt.ylabel("I(A)")
+plt.legend()
+plt.grid()
+plt.title("Curve-Fit mit modifizierter Butler-Volmer-Gleichung")
+plt.show()
+
 #%%
 # U_data=np.array([moddata["5.1A dis"]["U"][1,82],moddata["1.5C dis"]["U"][1,82],moddata["1C dis"]["U"][1,82],
 #                   moddata["3C/4 dis"]["U"][1,82],moddata["C/2 dis"]["U"][1,82],moddata["C/5 dis"]["U"][1,82],

@@ -355,7 +355,7 @@ def model2(U0,I, param):
 
 path=r"C:\Users\maxim\Nextcloud\Shared\Austausch_Max\Projekt_Entropie\OCV_Varianten"
 zellnamen=os.listdir(path)
-zellnamen=["dS24NCA01"]
+# zellnamen=["dS24NCA01"]
 c_rate=["C/5 iOCV","C/2 iOCV"]
 
 OCV={}
@@ -426,7 +426,7 @@ for z in zellnamen:
         #Ladepulse(27,28)
         #Entladepulse(20,21)
         lines=[lines_iOCV_dis[a],lines_iOCV_ch[a]]
-        data_t=dict_test["dS24NCA01_OCV_25deg.txt"]
+        data_t=dict_test[z+"_OCV_25deg.txt"]
         data_t = data_t.astype("float64")
         data_t[:,0]=data_t[:,0]*3600
         strome=[]
@@ -473,14 +473,14 @@ axes[0,0].legend()
 plt.show()
 # axes[1,0].set_ylim(0,10000)
 #%%
-d=10
-plt.plot(np.linspace(hppc_data[0][d][0,0],hppc_data[0][d][-1,0],len(plot_all[0][0][d])),plot_all[0][0][d][:])
-plt.plot(hppc_data[0][d][:,0],hppc_data[0][d][:,2]-hppc_data[0][d][0,2])
-plt.show()
+# d=10
+# plt.plot(np.linspace(hppc_data[0][d][0,0],hppc_data[0][d][-1,0],len(plot_all[0][0][d])),plot_all[0][0][d][:])
+# plt.plot(hppc_data[0][d][:,0],hppc_data[0][d][:,2]-hppc_data[0][d][0,2])
+# plt.show()
 #%%
-plt.plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][1,:])
-plt.plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][1,:])
-plt.show()
+# plt.plot(fit_all[0][0][0,:]/fit_all[0][0][0,0]*100,fit_all[0][0][1,:])
+# plt.plot(fit_all[0][1][0,:]/fit_all[0][1][0,-1]*100,fit_all[0][1][1,:])
+# plt.show()
 #%%
 """anderes Modell"""
 
